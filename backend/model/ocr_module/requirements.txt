@@ -1,0 +1,18 @@
+# Thai Receipt OCR Extractor - Dependencies
+
+# GPU-enabled OCR (recommended for NVIDIA GPU)
+easyocr
+torch
+torchvision
+
+# CPU-only OCR (fallback - uncomment if no GPU)
+# paddlepaddle
+# paddleocr
+
+# Image processing
+opencv-python
+numpy
+Pillow
+
+# Database (MySQL)
+mysql-connector-python

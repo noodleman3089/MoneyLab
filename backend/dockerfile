@@ -1,0 +1,24 @@
+FROM node:18
+
+WORKDIR /api
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source files
+COPY . .
+
+
+# Environment Variables
+ENV PORT=4000
+ENV DB_HOST=mysql-moneylab-container
+ENV DB_USER=root
+ENV DB_NAME=moneylab
+
+EXPOSE 4000
+
+# Run compiled JavaScript
+CMD ["node", "src/index.js"]

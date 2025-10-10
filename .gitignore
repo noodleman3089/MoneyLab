@@ -1,0 +1,9 @@
+#ignore folder
+
+node_modules/
+UXUI/
+
+#ignore file types
+*.png
+*.log
+*.jpg
