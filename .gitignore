@@ -2,8 +2,14 @@
 
 node_modules/
 UXUI/
+.venv/
+__pycache__/
 
 #ignore file types
 *.png
 *.log
 *.jpg
+*.pyc
+*.pyo
+*.pyd
+nul

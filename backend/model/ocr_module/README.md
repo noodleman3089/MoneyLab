@@ -1,176 +1,149 @@
 # OCR Module - Receipt Extraction
 
-โมดูล OCR สำหรับดึงข้อมูลจากใบเสร็จภาษาไทย พร้อมความสามารถในการตรวจสอบความถูกต้อง
-
-## 📁 โครงสร้างโฟลเดอร์
-
-```
-ocr_module/
-├── extract_receipt.py      # ไฟล์หลัก OCR
-├── requirements.txt         # Dependencies
-├── __init__.py             # Module initialization
-├── README.md               # คู่มือการใช้งาน
-└── utils/
-    ├── __init__.py
-    └── validation.py       # ตรวจสอบความถูกต้องข้อมูล
-```
+โมดูล OCR สำหรับดึงข้อมูลจากใบเสร็จภาษาไทย รองรับใบเสร็จจากธนาคาร, TrueMoney, PromptPay
 
 ## 🚀 การติดตั้ง
 
+### สำหรับเครื่องที่มี GPU (NVIDIA)
+
 ```bash
-# 1. ติดตั้ง dependencies
 pip install -r requirements.txt
-
-# 2. สำหรับ GPU (NVIDIA CUDA)
-pip install torch torchvision easyocr
-
-# 3. สำหรับ CPU อย่างเดียว
-pip install paddlepaddle paddleocr
 ```
 
-## 💻 วิธีใช้งานใน Python
+### สำหรับเครื่องที่ไม่มี GPU
 
-### แบบง่าย (ดึงข้อมูลอย่างเดียว)
+```bash
+pip install paddlepaddle paddleocr opencv-python numpy Pillow
+```
+
+## 💻 วิธีใช้งาน
+
+### แบบพื้นฐาน
 
 ```python
-from ocr_module import ReceiptExtractor
+from receipt_extractor import ReceiptExtractor
 
 # สร้าง extractor
-extractor = ReceiptExtractor(use_gpu=True)  # use_gpu=False สำหรับ CPU
+extractor = ReceiptExtractor(use_gpu=True)  # ใช้ False ถ้าไม่มี GPU
 
 # ดึงข้อมูลจากรูป
 result = extractor.extract_receipt_data('receipt.jpg')
 
-# แสดงผล
-print(f"Amount: {result.amount}")
-print(f"Date: {result.date}")
-print(f"Merchant: {result.merchant}")
-print(f"Sender: {result.sender_name}")
-print(f"Receiver: {result.receiver_name}")
+# ดูผลลัพธ์
+print(f"วันที่: {result.date}")
+print(f"จำนวนเงิน: {result.amount} บาท")
+print(f"ผู้ส่ง: {result.sender_name}")
+print(f"ผู้รับ: {result.receiver_name}")
+print(f"แหล่งที่มา: {result.merchant}")
 ```
 
-### แบบมี Validation (แนะนำ)
+### แบบมี Validation
 
 ```python
-from ocr_module import ReceiptExtractor
-from ocr_module.utils import validate_receipt_data
+from receipt_extractor import ReceiptExtractor
+from utils.validation import validate_receipt_data
 
 # ดึงข้อมูล
 extractor = ReceiptExtractor(use_gpu=True)
 result = extractor.extract_receipt_data('receipt.jpg')
 
-# แปลงเป็น dict
-data = result.to_dict()
-
 # ตรวจสอบความถูกต้อง
-validation = validate_receipt_data(data, strict_mode=False)
+validation = validate_receipt_data(result.to_dict())
 
 if validation.is_valid:
     print("✓ ข้อมูลถูกต้อง")
-    print(f"Validation Score: {validation.validation_score:.2%}")
-
-    # ใช้ข้อมูลที่แก้ไขแล้ว
-    corrected_data = validation.corrected_data
-    # บันทึกลง database ของคุณ...
+    data = validation.corrected_data  # ข้อมูลที่แก้ไขแล้ว
 else:
     print("✗ พบปัญหา:")
     for issue in validation.issues:
-        print(f"  - [{issue.severity}] {issue.field}: {issue.message}")
+        print(f"  - {issue.field}: {issue.message}")
 ```
 
-## 🔌 การนำไปใช้ในโปรเจกต์
-
-### วิธีที่ 1: คัดลอกโฟลเดอร์ทั้งหมด
+### ใช้ผ่าน Command Line
 
 ```bash
-# คัดลอก ocr_module ไปยังโปรเจกต์ของคุณ
-cp -r ocr_module/ /path/to/your/project/
-```
+# ใช้งานพื้นฐาน
+python extract_receipt.py receipt.jpg --pretty
 
-### วิธีที่ 2: Import จากตำแหน่งอื่น
-
-```python
-import sys
-sys.path.append('/path/to/ocr_module')
-
-from ocr_module import ReceiptExtractor
-```
-
-### วิธีที่ 3: สร้าง Python Package
-
-```bash
-# สร้าง setup.py แล้วติดตั้ง
-cd ocr_module
-pip install -e .
+# บันทึกผลลัพธ์
+python extract_receipt.py receipt.jpg --output result.json
 ```
 
 ## 📊 ข้อมูลที่ดึงได้
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `date` | str | วันที่ทำรายการ |
-| `merchant` | str | ชื่อร้านค้า/ธนาคาร |
-| `reference_id` | str | เลขที่รายการอ้างอิง |
-| `amount` | float | จำนวนเงิน (THB) |
-| `fee` | float | ค่าธรรมเนียม (THB) |
-| `sender_name` | str | ชื่อผู้ส่ง |
-| `receiver_name` | str | ชื่อผู้รับ |
-| `source` | dict | ประเภทและแบรนด์ (type, brand) |
-| `confidence` | dict | คะแนนความมั่นใจแต่ละฟิลด์ |
-| `overall_confidence` | float | คะแนนความมั่นใจรวม (0-1) |
+| ฟิลด์ | คำอธิบาย | ตัวอย่าง |
+|------|----------|----------|
+| `date` | วันที่และเวลา | `"31/08/2025 14:50"` |
+| `amount` | จำนวนเงิน | `3000.0` |
+| `fee` | ค่าธรรมเนียม | `0.0` |
+| `merchant` | แหล่งที่มา | `"Bank"`, `"TrueMoney"` |
+| `sender_name` | ชื่อผู้ส่ง | `"นาย สมชาย ใจดี"` |
+| `receiver_name` | ชื่อผู้รับ | `"นาง สมหญิง"` |
+| `reference_id` | เลขที่อ้างอิง | `"202508311450ABC"` |
 
-## ⚙️ ตัวเลือก
+## 📁 โครงสร้างโฟลเดอร์
+
+```text
+ocr_module/
+├── receipt_extractor.py      # คลาสหลักสำหรับดึงข้อมูล
+├── extract_receipt.py        # CLI สำหรับ command line
+├── requirements.txt          # Dependencies
+├── models/                   # Data models
+│   └── extraction_result.py
+├── patterns/                 # Regex patterns
+│   └── pattern_manager.py
+├── processors/               # ประมวลผลข้อความ
+│   └── text_processor.py
+├── ocr_backends/            # OCR engines
+│   ├── base_ocr.py
+│   └── gpu_manager.py
+└── utils/                   # Utilities
+    ├── validation.py
+    ├── image_preprocessing.py
+    └── name_cleaner.py
+```
+
+## ✨ คุณสมบัติ
+
+- รองรับทั้ง **EasyOCR (GPU)** และ **PaddleOCR (CPU)**
+- ปรับปรุงคุณภาพรูปภาพอัตโนมัติก่อน OCR
+- ตรวจสอบความถูกต้องของข้อมูลด้วย Validation System
+- รองรับใบเสร็จจากธนาคาร, TrueMoney, PromptPay, MyMo
+- แปลง พ.ศ. เป็น ค.ศ. อัตโนมัติ
+- คำนวณคะแนนความมั่นใจ (confidence score)
+
+## 🐛 แก้ปัญหา
+
+### OCR อ่านไม่ออก
+
+- ลองใช้ GPU แทน CPU: `ReceiptExtractor(use_gpu=True)`
+- ตรวจสอบว่ารูปชัด ไม่เบลอ
+- ตรวจสอบขนาดไฟล์ไม่ใหญ่เกินไป
+
+### ติดตั้ง Dependencies ไม่ได้
+
+```bash
+# ถ้าไม่มี GPU ใช้ PaddleOCR แทน
+pip install paddlepaddle paddleocr opencv-python numpy Pillow
+```
+
+### Validation ไม่ผ่าน
 
 ```python
-# GPU support
-extractor = ReceiptExtractor(use_gpu=True)
+# ดูปัญหาที่เกิดขึ้น
+for issue in validation.issues:
+    print(f"{issue.severity}: {issue.field} - {issue.message}")
 
-# เปลี่ยนภาษา (default: th)
-extractor = ReceiptExtractor(lang='th')  # 'en', 'th'
-
-# Strict validation mode
-validation = validate_receipt_data(data, strict_mode=True)
+# ใช้โหมดที่ผ่อนปรนกว่า
+validation = validate_receipt_data(data, strict_mode=False)
 ```
 
-## 🔍 ตัวอย่างผลลัพธ์
+## 📝 หมายเหตุ
 
-```json
-{
-  "date": "31/08/2025 14:50",
-  "merchant": "Bank",
-  "reference_id": "202508311450ABC123",
-  "amount": 3000.0,
-  "fee": 0.0,
-  "sender_name": "นาย สมชาย ใจดี",
-  "receiver_name": "มทร.ตะวันออก (ค่าธรรมเนียมการศึกษา)",
-  "source": {
-    "type": "bank",
-    "brand": "Bank"
-  },
-  "confidence": {
-    "date": 0.85,
-    "amount": 0.92,
-    "merchant": 0.90
-  },
-  "overall_confidence": 0.852
-}
-```
+- Module จะ auto-detect OCR backend ที่ติดตั้งอยู่
+- ถ้ามี GPU ควรใช้ EasyOCR เพราะแม่นกว่า
+- สามารถนำไปใช้ใน project อื่นได้โดยการ copy โฟลเดอร์ ocr_module ไปใช้
 
-## 📝 Notes
+---
 
-- รองรับ **PaddleOCR** (CPU) และ **EasyOCR** (GPU)
-- ทำงานได้ดีกับใบเสร็จภาษาไทย
-- มี validation rules สำหรับตรวจสอบข้อมูล
-- **ไม่มี database code** - เชื่อมต่อกับ database ของคุณเองได้
-
-## 🐛 Troubleshooting
-
-**หาก OCR อ่านไม่ออก:**
-- ลองใช้ GPU แทน CPU
-- ตรวจสอบความคมชัดของรูป
-- ลองปรับแสงในรูปก่อน OCR
-
-**หาก validation ไม่ผ่าน:**
-- ตรวจสอบ `validation.issues` เพื่อดูปัญหา
-- ใช้ `validation.corrected_data` สำหรับข้อมูลที่แก้ไขแล้ว
-- ปิด `strict_mode` ถ้าต้องการ validation ที่หลวมกว่า
+MoneyLab Development Team
