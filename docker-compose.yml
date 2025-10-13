@@ -1,0 +1,73 @@
+
+services:
+ mysql:
+  build:
+   context: ./backend/database
+   # ใช้ image ที่สร้างขึ้นจาก Dockerfile ในไดเรกทอรี backend/database
+  image: jirawatrmutto/moneylab-mysql:latest
+  ports:
+  # เปลี่ยนพอร์ตจาก 3306 เป็น 3307 เพื่อหลีกเลี่ยงการชนกับ MySQL ที่อาจรันอยู่บนโฮสต์ เครื่อง
+   - "3307:3306"
+  volumes:
+   - db_data:/var/lib/mysql
+
+ express:
+  build:
+  # ใช้ image ที่สร้างขึ้นจาก Dockerfile ในไดเรกทอรี backend/api
+   context: ./backend/src
+  image: jirawatrmutto/moneylab-express:latest
+  env_file:
+   - ./backend/.env
+  #มันจะรอให้บริการ mysql พร้อมก่อนที่จะเริ่มทำงาน  
+  depends_on:
+   - mysql
+  ports:
+   - "4000:4000"
+
+ flask:
+  build:
+  context: ./backend/model/ocr_module
+  image: jirawatrmutto/moneylab-flask:latest
+  depends_on:
+   - mysql
+  ports:
+   - "8000:8000"
+
+ web:
+  build:
+   context: ./frontend/web
+  image: moneylab/moneylabe-web:latest
+  #depends_on เพื่อให้แน่ใจว่าเซอร์วิส express และ flask จะเริ่มทำงานก่อนที่จะเริ่มเซอร์วิส web
+  depends_on:
+   - express
+   - flask
+  ports:
+   - "80:80"
+
+volumes:
+ db_data:
+# เก็บ metrics จาก Node Exporter
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    restart: always
+# เก็บ metrics จากเครื่องจริง
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    restart: always
+# แสดงผล metrics ผ่าน Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: always
