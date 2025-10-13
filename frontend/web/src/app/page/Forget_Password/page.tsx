@@ -18,13 +18,19 @@ export default function ForgetPasswordPage() {
     try {
       const response = await axios.post("/api/forget-password", { email });
       console.log(response.data);
+
     } catch (error) {
-      console.error(error);
+      console.error("Forget Password error:", error); // แสดงข้อผิดพลาดใน console
+      alert("Failed to send reset link. Please try again."); // แสดงข้อความเมื่อส่งลิงก์รีเซ็ตรหัสผ่านไม่สำเร็จ
     }
   };
 
   const handleBack = () => {
     window.location.href = "/page/login";
+  }
+
+  const handleNextPage = () => {
+    window.location.href = "/page/Reset_Password";
   }
 
   return (
@@ -40,7 +46,14 @@ export default function ForgetPasswordPage() {
 
       <div className='flex-1 bg-[#C7DCDE] flex items-center justify-center p-8'>
         <div className='w-full max-w-sm'>
-          <h1 className='text-[#223248] text-5xl font-semibold mb-12 text-center font-be-vietnam-pro'>Forget Password</h1>
+          <h1 className="flex items-center justify-center text-[#223248] text-5xl font-semibold mb-8 font-be-vietnam-pro whitespace-nowrap">Forgot Password ?</h1>
+
+          <div className="mb-8 text-left">
+            <h2 className="text-[#008170] text-xl font-semibold mb-2 font-be-vietnam-pro">Have you forgotten your password?</h2>
+            <p className="text-[#223248] text-sm font-be-vietnam-pro">
+              Please enter your username or email address <br />to receive a link to reset your password.
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className='space-y-6'>
             <input
@@ -49,16 +62,26 @@ export default function ForgetPasswordPage() {
               placeholder='Email'
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className='text-box'
+              className='w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro'
               required
             />
 
             <button
               type='submit'
-              className='btn-primary'
+              className='w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-6 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md'
             >
               Confirm
             </button>
+
+            {/* ปุ่มเปลี่ยนหน้าชั่วคราว */}
+            <button
+              type='button'
+              onClick={handleNextPage}
+              className='w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-6 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md'
+            >
+              Test Next Page
+            </button>
+
           </form>
         </div>
       </div>

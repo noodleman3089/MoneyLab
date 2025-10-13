@@ -80,7 +80,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-6 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md"
+              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-8 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md"
             >
               Confirm
             </button>

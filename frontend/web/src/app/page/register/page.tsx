@@ -49,6 +49,7 @@ export default function RegisterPage() {
       alert(result.message); // แสดงข้อความตอบกลับจาก API
 
       if(result.status === true) {
+        alert("Registration successful! Please log in.");
         window.location.href = "/page/login"; // เปลี่ยนเส้นทางไปยังหน้า login
       }
     } catch (error) {
@@ -116,7 +117,7 @@ export default function RegisterPage() {
 
       <div className="flex-1 bg-[#C7DCDE] flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <h1 className="text-[#223248] text-5xl font-semibold mb-8 text-center font-be-vietnam-pro">Sign up</h1>
+          <h1 className="text-[#223248] text-5xl font-semibold mb-8 text-center font-be-vietnam-pro">Sign Up</h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <input

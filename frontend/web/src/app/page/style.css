@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer styles {
   .text-box {
     @apply 
     w-full px-4 py-3 
@@ -44,4 +43,3 @@
     hover:text-[#008170] 
     hover:shadow-none;
   }
-}
