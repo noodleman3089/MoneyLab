@@ -1,15 +1,23 @@
 #ignore folder
 
 node_modules/
+<<<<<<< HEAD
 UXUI/
 .venv/
 __pycache__/
+=======
+Pic/
+>>>>>>> frontendd
 
 #ignore file types
 *.png
 *.log
 *.jpg
+<<<<<<< HEAD
 *.pyc
 *.pyo
 *.pyd
 nul
+=======
+*.jpeg
+>>>>>>> frontendd
