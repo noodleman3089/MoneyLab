@@ -55,11 +55,11 @@ routerP.post(
     try {
       // 🟢 ถ้าเลือก "อื่นๆ" แต่ไม่กรอกข้อความ
       if (occupation_id) {
-        const occ = await query("SELECT name_th FROM occupation WHERE occupation_id = ?", [occupation_id]);
-        if (occ.length > 0 && occ[0].name_th === 'อื่นๆ' && !occupation_other) {
+        const occ = await query("SELECT occupation_name FROM occupation WHERE occupation_id = ?", [occupation_id]);
+        if (occ.length > 0 && occ[0].occupation_name === 'อาชีพอื่นๆ' && !occupation_other) {
           return res.status(400).json({ 
             status: false, 
-            message: "กรุณากรอกข้อความอาชีพเมื่อเลือก 'อื่นๆ'" 
+            message: "กรุณากรอกข้อความอาชีพเมื่อเลือก 'อาชีพอื่นๆ'" 
           });
         }
       }

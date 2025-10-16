@@ -7,13 +7,15 @@ import path from 'path';
 //Routes
 import resetPasswordRoutes from './src/routes/reset_password';
 import profileRoutes from './src/routes/profile';
+import transactionRoutes from './src/routes/transactions';
+import transactionsOCR from './src/routes/transactions_ocr';
 //Controlles
 import registerControllers from './src/controllers/register';
 import loginControllers from './src/controllers/login';
 //Middlewares
 import { verifyAdmin } from './src/middlewares/authMiddleware';
 
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, './.env') });
 
 console.log('ENV:', {
   DB_USER: process.env.DB_USER,
@@ -133,6 +135,10 @@ app.use('/api', loginControllers);
 app.use('/api', registerControllers);
 
 app.use('/api', resetPasswordRoutes);
+
+app.use('/api/transactions', transactionRoutes);
+
+app.use('/api/transactions/ocr', transactionsOCR);
 
 // Start Web servert
 app.listen(PORT, () => {
