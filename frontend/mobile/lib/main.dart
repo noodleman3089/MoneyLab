@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'pages/login.dart';
 import 'pages/register.dart';
+import 'pages/forgetpassword.dart';
+import 'pages/restpassword.dart';
+import 'pages/Home Page.dart' as homepage;
+import 'pages/Additional.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,7 +13,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,6 +27,29 @@ class MyApp extends StatelessWidget {
         '/': (context) => const MyHomePage(title: 'MoneyLab'),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
+        '/forget-password': (context) => const ForgotPasswordScreen(),
+        '/restpassword': (context) => const ResetPasswordScreen(),
+
+      },
+      // ใช้ onGenerateRoute เพื่อจัดการ route ที่ต้องการ arguments
+      onGenerateRoute: (settings) {
+        if (settings.name == '/restpassword') {
+          // ดึง arguments ที่ส่งมา
+          final args = settings.arguments as Map<String, dynamic>?;
+          
+          // ตรวจสอบว่ามี token หรือไม่
+          if (args != null && args['token'] != null) {
+            return MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(token: args['token']),
+            );
+          }
+          
+          // ถ้าไม่มี token ให้กลับไปหน้า login
+          return MaterialPageRoute(
+            builder: (context) => const LoginPage(),
+          );
+        }
+        return null;
       },
     );
   }
@@ -31,15 +57,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -134,6 +151,38 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       child: const Text(
                         'Sign Up',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Test Button to Home Page
+                  SizedBox(
+                    width: 200,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const homepage.MainScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: const Text(
+                        'Test Home Page',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
