@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
   };
 
   const handleNextPage = () => {
-    window.location.href = "/page/login";
+    window.location.href = "/page/login"; //เอาไว้ทดสอบการเปลี่ยนหน้า
   }
 
   return (

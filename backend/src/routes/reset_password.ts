@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { query } from '../../index';
+import { query } from '../index';
 import { sendEmail } from '../sendEmail/sendEmail';
 import moment from 'moment-timezone';
 

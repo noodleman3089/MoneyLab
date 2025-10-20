@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import { sendEmail } from '../sendEmail/sendEmail';
-import { query } from '../../index';
+import { query } from '../index';
 
 const controllers_R = express();
 

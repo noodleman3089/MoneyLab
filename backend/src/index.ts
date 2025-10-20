@@ -5,13 +5,13 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 //Routes
-import resetPasswordRoutes from './src/routes/reset_password';
-import profileRoutes from './src/routes/profile';
+import resetPasswordRoutes from './routes/reset_password';
+import profileRoutes from './routes/profile';
 //Controlles
-import registerControllers from './src/controllers/register';
-import loginControllers from './src/controllers/login';
+import registerControllers from './controllers/register';
+import loginControllers from './controllers/login';
 //Middlewares
-import { verifyAdmin } from './src/middlewares/authMiddleware';
+import { verifyAdmin } from './middlewares/authMiddleware';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
