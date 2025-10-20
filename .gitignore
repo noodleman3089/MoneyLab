@@ -1,10 +1,14 @@
 #ignore folder
-
 node_modules/
 UXUI/
 .venv/
 __pycache__/
 Pic/
+Text/
+backend/nul
+
+# Ignore Windows reserved names
+nul
 
 #ignore file types
 *.png
@@ -15,3 +19,4 @@ Pic/
 *.pyd
 nul
 *.jpeg
+*.txt

@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import jwt from 'jsonwebtoken';
-import { query } from '../../index';
+import { query } from '../index';
 
 const routerP = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || '1234';

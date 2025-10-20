@@ -30,7 +30,7 @@ export default function LoginPage() {
       if (result.status === true) {
         // localStorage.setItem('user_id', result.user_id);
         // localStorage.setItem('token', result.token);
-        window.location.href = "/";
+        window.location.href = "/page/Main"; // เปลี่ยนเส้นทางไปยังหน้า Main
       }
     } catch (error) {
       console.error("Login error:", error); // แสดงข้อผิดพลาดใน console

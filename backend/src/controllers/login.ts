@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { query } from '../../index';
+import { query } from '../index';
 
 const controllers_L = express();
 const SECRET_KEY = process.env.SECRET_KEY || '1234'; 
