@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'Additional.dart';
+/*import 'Additional.dart';*/
+import 'UserProfilePage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,7 +39,8 @@ class _MainScreenState extends State<MainScreen> {
     const GoalPage(),
     const SummaryPage(),
     const DailyManagementPage(),
-    const AdditionalPage(),
+    const UserProfilePage(),
+    /*const AdditionalPage(),*/
   ];
 
   @override
@@ -110,6 +112,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
           ),
           _buildNavItem(
             index: 3,
+            icon: '👤',
+            label: 'โปรไฟล์',
+            gradient: const LinearGradient(
+              colors: [Color(0xFF4facfe), Color(0xFF00f2fe)],
+            ),
+          ),
+          _buildNavItem(
+            index: 4,
             icon: '...',
             label: 'เพิ่มเติม',
             gradient: const LinearGradient(

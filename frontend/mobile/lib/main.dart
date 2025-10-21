@@ -5,6 +5,7 @@ import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
 import 'pages/Home Page.dart' as homepage;
 import 'pages/Additional.dart';
+import 'pages/UserProfilePage.dart' as userprofile;
 
 void main() {
   runApp(const MyApp());
@@ -27,8 +28,6 @@ class MyApp extends StatelessWidget {
         '/': (context) => const MyHomePage(title: 'MoneyLab'),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/forget-password': (context) => const ForgotPasswordScreen(),
-        '/restpassword': (context) => const ResetPasswordScreen(),
 
       },
       // ใช้ onGenerateRoute เพื่อจัดการ route ที่ต้องการ arguments
