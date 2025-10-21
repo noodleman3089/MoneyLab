@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
--- ========================
+ ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at TIMESTAMP NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;--
 
 -- ========================
 -- category (lookup)
