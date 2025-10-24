@@ -3,7 +3,7 @@ services:
  mysql:
   build:
    context: ./backend/database
-   # ใช้ image ที่สร้างขึ้นจาก Dockerfile ในไดเรกทอรี backend/database
+   dockerfile: dockerfile
   image: jirawatrmutto/moneylab-mysql:latest
   ports:
   # เปลี่ยนพอร์ตจาก 3306 เป็น 3307 เพื่อหลีกเลี่ยงการชนกับ MySQL ที่อาจรันอยู่บนโฮสต์ เครื่อง
@@ -13,11 +13,10 @@ services:
 
  express:
   build:
-  # ใช้ image ที่สร้างขึ้นจาก Dockerfile ในไดเรกทอรี backend/api
-   context: ./backend/src
+   context: ./backend
+   dockerfile: dockerfile
   image: jirawatrmutto/moneylab-express:latest
-  env_file:
-   - ./backend/.env
+  
   #มันจะรอให้บริการ mysql พร้อมก่อนที่จะเริ่มทำงาน  
   depends_on:
    - mysql
@@ -26,48 +25,56 @@ services:
 
  flask:
   build:
-  context: ./backend/model/ocr_module
+   context: ./backend/model/ocr_module
   image: jirawatrmutto/moneylab-flask:latest
   depends_on:
    - mysql
   ports:
    - "8000:8000"
 
- web:
-  build:
-   context: ./frontend/web
-  image: moneylab/moneylabe-web:latest
-  #depends_on เพื่อให้แน่ใจว่าเซอร์วิส express และ flask จะเริ่มทำงานก่อนที่จะเริ่มเซอร์วิส web
-  depends_on:
-   - express
-   - flask
+
+# web:
+  #build:
+   #context: ./frontend/web
+   #dockerfile: dockerfile
+  #image: moneylab/moneylabe-web:latest
+  #depends_on เพื่อให้แน่ใจว่าเซอร์วิส express จะเริ่มทำงานก่อนที่จะเริ่มเซอร์วิส web
+  #depends_on:
+  # - express
+ # ports:
+ #  - "80:80"
+
+ prometheus:
+  image: prom/prometheus:latest
+  container_name: prometheus
   ports:
-   - "80:80"
+   - "9090:9090"
+  restart: always
+
+ node-exporter:
+  image: prom/node-exporter:latest
+  container_name: node-exporter
+  ports:
+   - "9100:9100"
+  restart: always
+
+ grafana:
+  image: grafana/grafana:latest
+  container_name: grafana
+  depends_on:
+   - prometheus
+  ports:
+   - "3000:3000"
+  environment:
+   - GF_SECURITY_ADMIN_USER=admin
+   - GF_SECURITY_ADMIN_PASSWORD=admin
+  volumes:
+   - grafana_data:/var/lib/grafana
+  restart: always
+
+
 
 volumes:
  db_data:
-# เก็บ metrics จาก Node Exporter
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    restart: always
-# เก็บ metrics จากเครื่องจริง
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    ports:
-      - "9100:9100"
-    restart: always
-# แสดงผล metrics ผ่าน Grafana
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    depends_on:
-      - prometheus
-    restart: always
+ grafana_data:
+
