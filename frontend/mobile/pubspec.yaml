@@ -50,6 +50,9 @@ dependencies:
   # Charts
   fl_chart: ^0.65.0
 
+  # Google Fonts
+  google_fonts: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

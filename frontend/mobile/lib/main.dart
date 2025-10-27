@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'pages/login.dart';
 import 'pages/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
-import 'pages/Home Page.dart' as homepage;
+import 'pages/Navbar.dart' as navbar;
 import 'pages/Additional.dart';
 import 'pages/UserProfilePage.dart' as userprofile;
 
@@ -28,7 +29,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const MyHomePage(title: 'MoneyLab'),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-
+        '/forgetpassword': (context) => const ForgotPasswordScreen(),
       },
       // ใช้ onGenerateRoute เพื่อจัดการ route ที่ต้องการ arguments
       onGenerateRoute: (settings) {
@@ -83,20 +84,20 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo or App Title
-                  const Text(
+                  Text(
                     'MoneyLab',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF223248),
+                      color: const Color(0xFF223248),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'Welcome to MoneyLab',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 18,
-                      color: Color(0xFF223248),
+                      color: const Color(0xFF223248),
                     ),
                   ),
                   const SizedBox(height: 80),
@@ -117,11 +118,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Login',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -148,15 +150,17 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Sign Up',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: const Color(0xFF4FB7B3),
                         ),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 24),
 
                   // Test Button to Home Page
@@ -168,7 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const homepage.MainScreen(),
+                            builder: (context) => const navbar.MainScreen(),
                           ),
                         );
                       },
@@ -180,11 +184,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Test Home Page',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),

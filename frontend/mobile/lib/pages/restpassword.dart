@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
 class ResetPasswordScreen extends StatefulWidget {
@@ -160,33 +161,33 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   const SizedBox(height: 60),
                   
                   // Title
-                  const Text(
+                  Text(
                     'Reset',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
+                      color: const Color(0xFF2C3E50),
                       height: 1.1,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Password',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 48,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
+                      color: const Color(0xFF2C3E50),
                       height: 1.1,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Description
-                  const Text(
+                  Text(
                     'กรุณากรอกรหัสผ่านใหม่ของคุณ',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 14,
-                      color: Color(0xFF2C3E50),
+                      color: const Color(0xFF2C3E50),
                       height: 1.5,
                     ),
                   ),
@@ -200,7 +201,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -209,10 +210,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     child: TextFormField(
                       controller: _newPasswordController,
                       obscureText: _obscureNewPassword,
+                      style: GoogleFonts.beVietnamPro(),
                       decoration: InputDecoration(
                         hintText: 'New Password',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF95A5A6),
+                        hintStyle: GoogleFonts.beVietnamPro(
+                          color: const Color(0xFF95A5A6),
                           fontSize: 14,
                         ),
                         border: InputBorder.none,
@@ -255,7 +257,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -264,10 +266,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     child: TextFormField(
                       controller: _confirmPasswordController,
                       obscureText: _obscureConfirmPassword,
+                      style: GoogleFonts.beVietnamPro(),
                       decoration: InputDecoration(
                         hintText: 'Confirm Password',
-                        hintStyle: const TextStyle(
-                          color: Color(0xFF95A5A6),
+                        hintStyle: GoogleFonts.beVietnamPro(
+                          color: const Color(0xFF95A5A6),
                           fontSize: 14,
                         ),
                         border: InputBorder.none,
@@ -325,11 +328,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
+                          : Text(
                               'Confirm',
-                              style: TextStyle(
+                              style: GoogleFonts.beVietnamPro(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                                color: Colors.white,
                               ),
                             ),
                     ),
@@ -343,28 +347,9 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       onPressed: () {
                         Navigator.of(context).pushReplacementNamed('/login');
                       },
-                      child: const Text(
+                      child: Text(
                         'Back to Login',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          decoration: TextDecoration.underline,
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Back to Login Button
-                  Center(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pushReplacementNamed('/login');
-                      },
-                      child: const Text(
-                        'Back to Login',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           color: Colors.white,
                           fontSize: 14,
                           decoration: TextDecoration.underline,

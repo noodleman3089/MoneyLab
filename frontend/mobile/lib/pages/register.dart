@@ -1,6 +1,7 @@
 // 1. Importing Dependencies
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
 // 2. Creating and Exporting a Widget
@@ -133,12 +134,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'เงื่อนไขการใช้งาน',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF223248),
+                          color: const Color(0xFF223248),
                         ),
                       ),
                       IconButton(
@@ -155,62 +156,63 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'ยินดีต้อนรับสู่ MoneyLab กรุณาอ่านเงื่อนไขการใช้งานเหล่านี้อย่างละเอียดก่อนใช้บริการของเรา',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '1. การยอมรับเงื่อนไข',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'การใช้บริการของเราถือว่าคุณยอมรับและตกลงที่จะปฏิบัติตามเงื่อนไขการใช้งานทั้งหมด',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '2. การใช้บริการ',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'คุณตกลงที่จะใช้บริการเพื่อวัตถุประสงค์ที่ถูกต้องตามกฎหมายเท่านั้น',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '3. ความรับผิดชอบของผู้ใช้',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'ผู้ใช้มีหน้าที่รับผิดชอบในการรักษาความปลอดภัยของบัญชีและรหัสผ่านของตนเอง',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '4. การเปลี่ยนแปลงเงื่อนไข',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'เราขอสงวนสิทธิ์ในการเปลี่ยนแปลงเงื่อนไขการใช้งานได้ตลอดเวลา',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                       ],
                     ),
                   ),
                 ),
+
                 // Close Button
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -222,9 +224,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         backgroundColor: const Color(0xFF4FB7B3),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text(
+                      child: Text(
                         'ปิด',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -232,6 +234,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
+
               ],
             ),
           ),
@@ -260,12 +263,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'นโยบายความเป็นส่วนตัว',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF223248),
+                          color: const Color(0xFF223248),
                         ),
                       ),
                       IconButton(
@@ -282,62 +285,62 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'เราให้ความสำคัญกับความเป็นส่วนตัวของคุณ นโยบายนี้อธิบายว่าเราจัดการข้อมูลส่วนบุคคลของคุณอย่างไร',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '1. การเก็บรวบรวมข้อมูล',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'เราเก็บรวบรวมข้อมูลที่คุณให้ไว้เมื่อลงทะเบียนและใช้บริการของเรา รวมถึงชื่อผู้ใช้ อีเมล และเบอร์โทรศัพท์',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '2. การใช้ข้อมูล',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'ข้อมูลของคุณจะถูกใช้เพื่อให้บริการและปรับปรุงประสบการณ์การใช้งานของคุณ',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '3. การปกป้องข้อมูล',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
-                          ),
+                            color: const Color(0xFF223248)),
                         ),
-                        const Text(
+                        Text(
                           'เราใช้มาตรการรักษาความปลอดภัยเพื่อปกป้องข้อมูลส่วนบุคคลของคุณ',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                         const SizedBox(height: 16),
-                        const Text(
+                        Text(
                           '4. การแบ่งปันข้อมูล',
-                          style: TextStyle(
+                          style: GoogleFonts.beVietnamPro(
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF223248),
+                            color: const Color(0xFF223248),
                           ),
                         ),
-                        const Text(
+                        Text(
                           'เราจะไม่แบ่งปันข้อมูลส่วนบุคคลของคุณกับบุคคลที่สามโดยไม่ได้รับความยินยอมจากคุณ',
-                          style: TextStyle(color: Color(0xFF223248)),
+                          style: GoogleFonts.beVietnamPro(color: const Color(0xFF223248)),
                         ),
                       ],
                     ),
                   ),
                 ),
+
                 // Close Button
                 Padding(
                   padding: const EdgeInsets.all(16),
@@ -349,9 +352,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         backgroundColor: const Color(0xFF4FB7B3),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
-                      child: const Text(
+                      child: Text(
                         'ปิด',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -359,6 +362,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ),
                 ),
+                
               ],
             ),
           ),
@@ -407,14 +411,15 @@ class _RegisterPageState extends State<RegisterPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           // Title
-                          const Text(
+                          Text(
                             'Sign up',
-                            style: TextStyle(
+                            style: GoogleFonts.beVietnamPro(
                               fontSize: 48,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF223248),
+                              color: const Color(0xFF223248),
                             ),
                           ),
+
                           const SizedBox(height: 32),
 
                           // Username Input
@@ -428,6 +433,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
+                          
                           const SizedBox(height: 16),
 
                           // Email Input
@@ -445,6 +451,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
+
                           const SizedBox(height: 16),
 
                           // Phone Number Input
@@ -459,6 +466,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
+
                           const SizedBox(height: 16),
 
                           // Password Input
@@ -473,6 +481,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
+
                           const SizedBox(height: 16),
 
                           // Confirm Password Input
@@ -487,6 +496,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               return null;
                             },
                           ),
+
                           const SizedBox(height: 24),
 
                           // Terms and Conditions Checkbox
@@ -504,36 +514,36 @@ class _RegisterPageState extends State<RegisterPage> {
                               Expanded(
                                 child: Wrap(
                                   children: [
-                                    const Text(
+                                    Text(
                                       'I accept ',
-                                      style: TextStyle(
-                                        color: Color(0xFF223248),
+                                      style: GoogleFonts.beVietnamPro(
+                                        color: const Color(0xFF223248),
                                         fontSize: 14,
                                       ),
                                     ),
                                     GestureDetector(
                                       onTap: _showTermsDialog,
-                                      child: const Text(
+                                      child: Text(
                                         'Terms of Use',
-                                        style: TextStyle(
+                                        style: GoogleFonts.beVietnamPro(
                                           color: Colors.blue,
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ),
-                                    const Text(
+                                    Text(
                                       ' and ',
-                                      style: TextStyle(
-                                        color: Color(0xFF223248),
+                                      style: GoogleFonts.beVietnamPro(
+                                        color: const Color(0xFF223248),
                                         fontSize: 14,
                                       ),
                                     ),
                                     GestureDetector(
                                       onTap: _showPrivacyDialog,
-                                      child: const Text(
+                                      child: Text(
                                         'Privacy Policy',
-                                        style: TextStyle(
+                                        style: GoogleFonts.beVietnamPro(
                                           color: Colors.blue,
                                           fontSize: 14,
                                           fontWeight: FontWeight.bold,
@@ -545,6 +555,7 @@ class _RegisterPageState extends State<RegisterPage> {
                               ),
                             ],
                           ),
+
                           const SizedBox(height: 24),
 
                           // Register Button
@@ -570,25 +581,28 @@ class _RegisterPageState extends State<RegisterPage> {
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Text(
+                                  : Text(
                                       'Register',
-                                      style: TextStyle(
+                                      style: GoogleFonts.beVietnamPro(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
+                                        color: Colors.white,
                                       ),
                                     ),
                             ),
                           ),
+
                           const SizedBox(height: 16),
 
                           // Or Divider
-                          const Text(
+                          Text(
                             'or',
-                            style: TextStyle(
-                              color: Color(0xFF223248),
+                            style: GoogleFonts.beVietnamPro(
+                              color: const Color(0xFF223248),
                               fontSize: 16,
                             ),
                           ),
+                          
                           const SizedBox(height: 16),
 
                           // Google Sign In Button
@@ -617,9 +631,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                   );
                                 },
                               ),
-                              label: const Text(
+                              label: Text(
                                 'Google',
-                                style: TextStyle(
+                                style: GoogleFonts.beVietnamPro(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -663,9 +677,10 @@ class _RegisterPageState extends State<RegisterPage> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        style: GoogleFonts.beVietnamPro(),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.grey),
+          hintStyle: GoogleFonts.beVietnamPro(color: Colors.grey),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,

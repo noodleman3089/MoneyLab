@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
 class ForgotPasswordScreen extends StatefulWidget {
@@ -39,7 +40,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://localhost:4000/api/forgot-password'),
+        Uri.parse('http://localhost:4000/api/forgotpassword'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'identifier': _identifierController.text.trim(),
@@ -118,33 +119,33 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 60),
                 
                 // Title
-                const Text(
+                Text(
                   'Forgot',
-                  style: TextStyle(
+                  style: GoogleFonts.beVietnamPro(
                     fontSize: 48,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
+                    color: const Color(0xFF2C3E50),
                     height: 1.1,
                   ),
                 ),
-                const Text(
+                Text(
                   'Password ?',
-                  style: TextStyle(
+                  style: GoogleFonts.beVietnamPro(
                     fontSize: 48,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
+                    color: const Color(0xFF2C3E50),
                     height: 1.1,
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Description text
-                const Text(
+                Text(
                   'คุณลืมรหัสผ่านใช่มั้ย? กรุณากรอกอีเมลแล้วเราจะส่ง link สำหรับการเปลี่ยนรหัสผ่านให้คุณ',
-                  style: TextStyle(
+                  style: GoogleFonts.beVietnamPro(
                     fontSize: 14,
-                    color: Color(0xFF2C3E50),
+                    color: const Color(0xFF2C3E50),
                     height: 1.5,
                   ),
                 ),
@@ -158,7 +159,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withValues(alpha: 0.1),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -167,14 +168,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   child: TextField(
                     controller: _identifierController,
                     keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
+                    style: GoogleFonts.beVietnamPro(),
+                    decoration: InputDecoration(
                       hintText: 'Email or Username',
-                      hintStyle: TextStyle(
-                        color: Color(0xFF95A5A6),
+                      hintStyle: GoogleFonts.beVietnamPro(
+                        color: const Color(0xFF95A5A6),
                         fontSize: 14,
                       ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
+                      contentPadding: const EdgeInsets.symmetric(
                         horizontal: 20,
                         vertical: 16,
                       ),
@@ -209,11 +211,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text(
+                        : Text(
                             'Reset Password',
-                            style: TextStyle(
+                            style: GoogleFonts.beVietnamPro(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
+                              color: Colors.white,
                             ),
                           ),
                   ),
@@ -231,9 +234,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     color: Colors.white,
                     size: 20,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Back',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       color: Colors.white,
                       fontSize: 16,
                     ),

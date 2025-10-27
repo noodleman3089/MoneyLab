@@ -1,6 +1,7 @@
 // 1. Importing Dependencies
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
 // 2. Creating and Exporting a Widget
@@ -82,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
 
   // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า Forget Password
   void _handleForgotPassword() {
-    Navigator.pushNamed(context, '/forget-password');
+    Navigator.pushNamed(context, '/forgetpassword');
   }
 
   // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า Register
@@ -90,119 +91,89 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.pushNamed(context, '/register');
   }
 
+  // ฟังก์ชันสำหรับย้อนกลับ
+  void _handleBack() {
+    Navigator.pop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-      child: Container(
-      decoration: const BoxDecoration(
-      gradient: LinearGradient(
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
             ),
           ),
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo หรือ Icon (ถ้ามี)
-                    const SizedBox(height: 20),
-
-                    // Title
-                    const Text(
-                      'Login',
-                      style: TextStyle(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF223248),
-                      ),
+          child: Column(
+            children: [
+              // Back Button
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: IconButton(
+                    onPressed: _handleBack,
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Color(0xFF223248),
+                      size: 28,
                     ),
-                    const SizedBox(height: 60),
-
-                    // Username Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF9CAAD6).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextFormField(
-                        controller: _usernameController,
-                        decoration: const InputDecoration(
-                          hintText: 'Username',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Color(0xFF4FB7B3),
-                              width: 2,
+                  ),
+                ),
+              ),
+              // Form Content
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Title
+                          Text(
+                            'Login',
+                            style: GoogleFonts.beVietnamPro(
+                              fontSize: 48,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF223248),
                             ),
                           ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter username';
-                          }
-                          return null;
-                        },
-                      ),
+
+                    const SizedBox(height: 32),
+
+                     // Username Input
+                    _buildInputField(
+                      controller: _usernameController,
+                      hintText: 'Username',
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter username';
+                        }
+                        return null;
+                      },
                     ),
+
                     const SizedBox(height: 24),
 
                     // Password Input
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(4),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF9CAAD6).withOpacity(0.3),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextFormField(
-                        controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          hintText: 'Passwords',
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(
-                              color: Color(0xFF4FB7B3),
-                              width: 2,
-                            ),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter password';
-                          }
-                          return null;
-                        },
-                      ),
+                    _buildInputField(
+                      controller: _passwordController,
+                      hintText: 'Passwords',
+                      obscureText: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter password';
+                        }
+                        return null;
+                      },
                     ),
+                    
                     const SizedBox(height: 32),
 
                     // Confirm Button
@@ -228,15 +199,17 @@ class _LoginPageState extends State<LoginPage> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
+                            : Text(
                                 'Confirm',
-                                style: TextStyle(
+                                style: GoogleFonts.beVietnamPro(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
+                                  color: Colors.white,
                                 ),
                               ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
 
                     // Forgot Password & Sign Up Links
@@ -245,32 +218,80 @@ class _LoginPageState extends State<LoginPage> {
                       children: [
                         TextButton(
                           onPressed: _handleForgotPassword,
-                          child: const Text(
+                          child: Text(
                             'Forget Password ?',
-                            style: TextStyle(
-                              color: Color(0xFF223248),
+                            style: GoogleFonts.beVietnamPro(
+                              color: const Color(0xFF223248),
                               fontSize: 14,
                             ),
                           ),
                         ),
                         TextButton(
                           onPressed: _handleSignUp,
-                          child: const Text(
+                          child: Text(
                             'Don\'t have account',
-                            style: TextStyle(
-                              color: Color(0xFF223248),
+                            style: GoogleFonts.beVietnamPro(
+                              color: const Color(0xFF223248),
                               fontSize: 14,
                             ),
                           ),
                         ),
                       ],
                     ),
-                  ],
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  // Helper method สำหรับสร้าง input field
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String hintText,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    String? Function(String?)? validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(4),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF9CAAD6).withValues(alpha: 0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        style: GoogleFonts.beVietnamPro(),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: GoogleFonts.beVietnamPro(color: Colors.grey),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+          focusedBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFF4FB7B3), width: 2),
+          ),
+          errorBorder: const OutlineInputBorder(
+            borderSide: BorderSide(color: Colors.red, width: 1),
+          ),
+        ),
+        validator: validator,
       ),
     );
   }
