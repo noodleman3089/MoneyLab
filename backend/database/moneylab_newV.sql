@@ -217,6 +217,41 @@ CREATE INDEX ix_profile_main_period ON profile(main_income_period_id);
 CREATE INDEX ix_profile_side_period ON profile(side_income_period_id);
 
 -- ========================
+-- debt (1:N with profile)
+-- ========================
+CREATE TABLE IF NOT EXISTS debt (
+  debt_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  profile_id BIGINT UNSIGNED NOT NULL COMMENT 'FK ชี้ไปที่ profile ของผู้ใช้',
+
+  debt_type VARCHAR(100) NOT NULL COMMENT 'ประเภทหนี้ (เช่น บัตรเครดิต, สินเชื่อรถ, สินเชื่อบ้าน, กยศ.)',
+  debt_amount DECIMAL(14, 2) NOT NULL DEFAULT 0.00 COMMENT 'ยอดหนี้คงเหลือ',
+  
+  -- === คอลัมน์สำคัญสำหรับ Logic ===
+  debt_interest_rate DECIMAL(5, 2) NOT NULL DEFAULT 0.00 COMMENT 'อัตราดอกเบี้ยต่อปี (เช่น 18.50 สำหรับ 18.5%)',
+  debt_monthly_payment DECIMAL(12, 2) NOT NULL DEFAULT 0.00 COMMENT 'ยอดผ่อนชำระต่อเดือน',
+  -- ===============================
+  
+  debt_duration_months INT UNSIGNED NULL COMMENT 'ระยะเวลาผ่อนที่เหลือ (เดือน)',
+
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  -- === Constraints ===
+  CONSTRAINT fk_debt_profile FOREIGN KEY (profile_id)
+    REFERENCES profile(profile_id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+    
+  -- ตรวจสอบว่าค่าเป็นบวกเสมอ
+  CONSTRAINT chk_debt_amount_nonneg CHECK (debt_amount >= 0),
+  CONSTRAINT chk_debt_rate_nonneg CHECK (debt_interest_rate >= 0),
+  CONSTRAINT chk_debt_payment_nonneg CHECK (debt_monthly_payment >= 0)
+
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- สร้าง Index เพื่อการค้นหาที่รวดเร็ว
+CREATE INDEX ix_debt_profile ON debt(profile_id);
+
+-- ========================
 -- saving_goals
 -- ========================
 CREATE TABLE IF NOT EXISTS saving_goals (
@@ -477,17 +512,30 @@ INSERT INTO survey_question (question_text, question_type, options) VALUES
   {"value": "FINANCE", "label": "การเงิน / ธนาคาร (Finance / Banking)"},
   {"value": "ANY", "label": "ไม่มีอะไรเป็นพิเศษ / ให้ระบบแนะนำได้เลย"}]');
 
-CREATE TABLE IF NOT EXISTS survey_answer (
-  answer_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
-  question_id BIGINT UNSIGNED NOT NULL,
-  answer_value TEXT NULL,
-  answered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_sa_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_sa_question FOREIGN KEY (question_id) REFERENCES survey_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE
+-- ========================
+-- investment_recommendation (Polymorphic Version)
+-- ========================
+CREATE TABLE IF NOT EXISTS investment_recommendation (
+  recommendation_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  goal_id BIGINT UNSIGNED NOT NULL COMMENT 'FK ชี้ไปที่ saving_goals',
+  
+  -- === ส่วนที่รองรับ 3 ตาราง (stocks, stocksTH, funds) ===
+  investment_type ENUM('stock', 'stockTH', 'fund') NOT NULL COMMENT 'บอกว่าสินทรัพย์นี้มาจากตารางไหน',
+  investment_ref_id BIGINT UNSIGNED NOT NULL COMMENT 'ID ที่อ้างอิง (เช่น stock_id หรือ fund_id)',
+  -- ===================================================
+  
+  recommended_allocation_percent DECIMAL(5,2) NOT NULL CHECK (recommended_allocation_percent >= 0 AND recommended_allocation_percent <= 100),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  -- Foreign Key ไปที่ goal
+  CONSTRAINT fk_ir_goal FOREIGN KEY (goal_id) REFERENCES saving_goals(goal_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- สร้าง Index เพื่อการค้นหาที่รวดเร็ว
+CREATE INDEX ix_ir_goal ON investment_recommendation(goal_id);
+CREATE INDEX ix_ir_investment_poly ON investment_recommendation(investment_type, investment_ref_id);
 CREATE INDEX ix_survey_user ON survey_answer(user_id);
 CREATE INDEX ix_survey_question ON survey_answer(question_id);
 
