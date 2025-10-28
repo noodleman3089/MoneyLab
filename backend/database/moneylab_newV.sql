@@ -280,19 +280,47 @@ CREATE INDEX ix_saving_tx_wallet ON saving_transactions(wallet_id);
 -- ========================
 -- investment
 -- ========================
-CREATE TABLE IF NOT EXISTS investment (
-  investment_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  stock_symbol VARCHAR(32) NOT NULL,
-  stock_name VARCHAR(255) NULL,
+CREATE TABLE IF NOT EXISTS stocks (
+  stock_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  symbol VARCHAR(32) NOT NULL,
+  long_name VARCHAR(255) NULL,
   current_price DECIMAL(18,6) NULL,
   market_cap DECIMAL(20,2) NULL,
   sector VARCHAR(100) NULL,
-  risk_level ENUM('low','medium','high') DEFAULT 'medium',
-  historical_return DECIMAL(6,4) NULL,
+  industry VARCHAR(100) NULL,
   last_updated TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_investment_symbol (stock_symbol)
+  UNIQUE KEY uq_stock_symbol (symbol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS stocksTH (
+  stock_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  symbol VARCHAR(32) NOT NULL,
+  long_name VARCHAR(255) NULL,
+  current_price DECIMAL(18,6) NULL,
+  market_cap DECIMAL(20,2) NULL,
+  sector VARCHAR(100) NULL,
+  industry VARCHAR(100) NULL,
+  last_updated TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_stock_symbol (symbol)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS funds (
+  fund_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  symbol VARCHAR(32) NOT NULL,
+  long_name VARCHAR(255) NULL,
+  current_price DECIMAL(18,6) NULL,
+  category VARCHAR(100) NULL,
+  total_assets DECIMAL(20,2) NULL,
+  nav_price DECIMAL(18,6) NULL,
+  ytd_return DECIMAL(8,6) NULL,
+  last_updated TIMESTAMP NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_fund_symbol (symbol)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
@@ -391,11 +419,63 @@ CREATE INDEX ix_log_actor_type ON `log` (actor_type);
 CREATE TABLE IF NOT EXISTS survey_question (
   question_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   question_text TEXT NOT NULL,
-  question_type ENUM('text','single_choice','multi_choice','number','rating') NOT NULL DEFAULT 'text',
+  question_type ENUM('single_choice','multi_choice') NOT NULL,
   options JSON NULL, -- array of choice options for choice questions
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- คำถามที่ 1: วัดทัศนคติต่อความเสี่ยง (Risk Tolerance)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('สมมติว่าคุณลงทุน 100,000 บาท หนึ่งเดือนต่อมา ตลาดผันผวนหนัก ทำให้เงินของคุณเหลือ 80,000 บาท (ขาดทุน 20,000 บาท) คุณจะทำอย่างไร?', 'single_choice',
+'[{"value": "A", "label": "ขายทิ้งทันทีทั้งหมด เพราะรับไม่ได้ที่จะขาดทุนไปมากกว่านี้"},
+  {"value": "B", "label": "ถือไว้ก่อน และติดตามสถานการณ์อย่างใกล้ชิด"},
+  {"value": "C", "label": "ซื้อเพิ่ม เพราะคิดว่าเป็นโอกาสที่ดีในการซื้อของถูก"},
+  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
+
+-- คำถามที่ 2: วัดวินัยทางการเงิน (Spending Behavior)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('ข้อใดอธิบายพฤติกรรมการใช้เงินของคุณได้ดีที่สุด?', 'single_choice',
+'[{"value": "A", "label": "ฉันวางแผนงบประมาณ (Budget) อย่างเคร่งครัด และใช้เงินตามแผนเสมอ"},
+  {"value": "B", "label": "พยายามจะออม แต่บางครั้งก็ใช้จ่ายตามอารมณ์บ้าง"},
+  {"value": "C", "label": "มักจะใช้เงินก่อน แล้วค่อยออมส่วนที่เหลือ (ถ้ามี)"},
+  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
+
+-- คำถามที่ 3: วัดความมั่นคงทางการเงิน (Financial Stability)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('คุณมี ''เงินสำรองฉุกเฉิน'' (เงินสดที่ครอบคลุมค่าใช้จ่าย 3-6 เดือน) แล้วหรือยัง?', 'single_choice',
+'[{"value": "A", "label": "มีครบถ้วนแล้ว"},
+  {"value": "B", "label": "มีบ้าง แต่ยังไม่ครบ 3-6 เดือน"},
+  {"value": "C", "label": "ยังไม่มีเลย"},
+  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
+
+-- คำถามที่ 4: วัดความรู้ด้านการลงทุน (Financial Knowledge)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('คุณมีความเข้าใจหรือคุ้นเคยกับผลิตภัณฑ์การเงินใดบ้าง? (เลือกได้หลายข้อ)', 'multi_choice',
+'[{"value": "SAVINGS", "label": "เงินฝากออมทรัพย์ / ฝากประจำ"},
+  {"value": "MUTUAL_FUND", "label": "กองทุนรวม (เช่น กองทุนตราสารหนี้, กองทุนหุ้น)"},
+  {"value": "STOCK", "label": "หุ้นรายตัว"},
+  {"value": "BOND", "label": "ตราสารหนี้ (พันธบัตร)"},
+  {"value": "CRYPTO", "label": "สินทรัพย์ดิจิทัล (Cryptocurrency)"},
+  {"value": "NONE", "label": "ไม่คุ้นเคยกับการลงทุนใดๆ เลย"}]');
+
+-- คำถามที่ 5: วัดเป้าหมายเชิงคุณภาพ (Qualitative Goal)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('อะไรคือเป้าหมายหลัก ''ที่แท้จริง'' ของการลงทุนนี้?', 'single_choice',
+'[{"value": "CAPITAL_PRESERVATION", "label": "เพื่อรักษาเงินต้นให้ปลอดภัย (ชนะเงินเฟ้อ)"},
+  {"value": "STABLE_GROWTH", "label": "เพื่อให้เงินงอกเงยอย่างมั่นคง (วางแผนเกษียณ, ซื้อบ้าน)"},
+  {"value": "MAX_RETURN", "label": "เพื่อสร้างผลตอบแทนสูงสุด แม้จะต้องเสี่ยงสูง (สร้างความมั่งคั่ง)"},
+  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
+
+-- คำถามที่ 6: วัดความสนใจ (Personal Interest)
+INSERT INTO survey_question (question_text, question_type, options) VALUES
+('คุณสนใจลงทุนในอุตสาหกรรมใดเป็นพิเศษ? (เลือกได้หลายข้อ)', 'multi_choice',
+'[{"value": "TECH", "label": "เทคโนโลยี (Tech) / นวัตกรรม"},
+  {"value": "HEALTHCARE", "label": "สุขภาพ (Healthcare)"},
+  {"value": "ENERGY_UTILITIES", "label": "พลังงาน / สาธารณูปโภค (Energy / Utilities)"},
+  {"value": "CONSUMER", "label": "สินค้าอุปโภคบริโภค (Consumer Goods)"},
+  {"value": "FINANCE", "label": "การเงิน / ธนาคาร (Finance / Banking)"},
+  {"value": "ANY", "label": "ไม่มีอะไรเป็นพิเศษ / ให้ระบบแนะนำได้เลย"}]');
 
 CREATE TABLE IF NOT EXISTS survey_answer (
   answer_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
