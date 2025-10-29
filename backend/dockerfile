@@ -14,9 +14,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install --omit=dev
 
-# Copy compiled code and assets from builder
+# Copy compiled code from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/assets ./assets
 COPY --from=builder /app/.env ./.env
 
 # Create wait-for script
