@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import { query } from '../../index';
+import { query } from '../index';
 import { authenticateToken } from '../middlewares/authMiddleware';
 
 interface AuthRequest extends Request {
@@ -59,14 +59,31 @@ routes_T.post(
           });
         }
       }
+      let walletId: number | null = null;
+          const wallet = await query(
+          'SELECT wallet_id FROM wallet WHERE user_id = ? LIMIT 1',
+          [userId]
+          );
+          if (wallet.length === 0) {
+            // 🆕 ถ้ายังไม่มี wallet ให้สร้างใหม่
+            const createWallet = await query(
+              'INSERT INTO wallet (user_id, wallet_name, currency, balance) VALUES (?, ?, ?, 0)',
+              [userId, 'Main Wallet', 'THB']
+            );
+            walletId = createWallet.insertId;
+            console.log(`🆕 สร้าง wallet ใหม่สำหรับ user_id=${userId} → wallet_id=${walletId}`);
+          } else {
+            walletId = wallet[0].wallet_id;
+          }
 
       await query(
         `INSERT INTO transactions
-          (user_id, category_id, type, amount, fee, sender_name, receiver_name,
+          (user_id, wallet_id, category_id, type, amount, fee, sender_name, receiver_name,
            reference_id, payment_source, data_source, confidence, transaction_date)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
+          walletId,
           category_id || null,
           type,
           amount,

@@ -5,17 +5,21 @@ import dotenv from 'dotenv';
 import bcrypt from 'bcryptjs';
 import path from 'path';
 //Routes
-import resetPasswordRoutes from './src/routes/reset_password';
-import profileRoutes from './src/routes/profile';
-import transactionRoutes from './src/routes/transactions';
-import transactionsOCR from './src/routes/transactions_ocr';
-//Controlles
-import registerControllers from './src/controllers/register';
-import loginControllers from './src/controllers/login';
+import resetPasswordRoutes from './routes/reset_password';
+import profileRoutes from './routes/profile';
+import transactionRoutes from './routes/transactions';
+import transactionsOCR from './routes/transactions_ocr';
+import DailyBudgetrouter from "./routes/daily_budget";
+import savingGoalsRoutes from './routes/savingGoals';
+import walletRouter from './routes/wallet';
+import savingTransactionRoutes from './routes/saving_transactions';
+//Controllers
+import registerControllers from './controllers/register';
+import loginControllers from './controllers/login';
 //Middlewares
-import { verifyAdmin } from './src/middlewares/authMiddleware';
+import { verifyAdmin } from './middlewares/authMiddleware';
 
-dotenv.config({ path: path.resolve(__dirname, './.env') });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 console.log('ENV:', {
   DB_USER: process.env.DB_USER,
@@ -131,14 +135,22 @@ app.use('/api', profileRoutes);
 
 app.use('/api', loginControllers);
 
+app.use('/api/transactions', transactionRoutes);
+
+app.use('/api/transactions/ocr', transactionsOCR);
+
+app.use("/api/daily-budget", DailyBudgetrouter);
+
+app.use('/api/saving-goals', savingGoalsRoutes);
+
+app.use('/api/wallet', walletRouter);
+
+app.use('/api/saving-transactions', savingTransactionRoutes);
+
 //Controllers
 app.use('/api', registerControllers);
 
 app.use('/api', resetPasswordRoutes);
-
-app.use('/api/transactions', transactionRoutes);
-
-app.use('/api/transactions/ocr', transactionsOCR);
 
 // Start Web servert
 app.listen(PORT, () => {
