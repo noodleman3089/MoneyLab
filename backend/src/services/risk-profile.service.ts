@@ -8,7 +8,7 @@ import {
   RiskProfileResult,
   RiskProfileName,
   KnowledgeValue
-} from '../type'; // <-- ย้อนกลับ Path
+} from '../type/type'; // <-- ย้อนกลับ Path
 
 // ========================================================
 // === 2. กำหนดค่าคงที่ (Constants) สำหรับการคำนวณ ===

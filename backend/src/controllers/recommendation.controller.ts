@@ -3,7 +3,7 @@ import { Request, Response } from 'express';
 import mysql from 'mysql2/promise';
 
 // --- 1. IMPORT TYPES AND SERVICES ---
-import { UserFinancialInput } from '../type';
+import { UserFinancialInput } from '../type/type';
 import { dbConfig, fetchAssetsFromDb, saveRecommendationsToDb } from '../services/database.service';
 import { calculateRiskProfile } from '../services/risk-profile.service';
 import { getFinancialRecommendations } from '../services/recommendation.service';
