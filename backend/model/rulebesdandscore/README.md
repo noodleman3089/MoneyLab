@@ -1,21 +1,22 @@
 # Financial Recommendation Microservice
 
-## 1. ภาพรวม (Overview)
+## 1. ภาพรวม (Overview) 
 
 โปรเจกต์นี้คือ Microservice ที่สร้างด้วย Node.js, Express, และ TypeScript มีหน้าที่หลักในการสร้างคำแนะนำทางการเงิน (Financial Recommendations) โดยรับข้อมูลทางการเงินของผู้ใช้และเป้าหมาย (Goal) เข้ามาประมวลผล
 
-**กระบวนการทำงาน:**
-1.  รับข้อมูล `userInput` และ `goalId` ผ่าน API
-2.  คำนวณโปรไฟล์ความเสี่ยง (`Risk Profile`) จากแบบสอบถาม
-3.  สร้างคำแนะนำทั่วไป (General Advice) เช่น การจัดการหนี้, การออม
-4.  สร้างคำแนะนำการลงทุน (Investment Recommendations) โดยอิงจาก Risk Profile และสินทรัพย์ที่มีในฐานข้อมูล
-5.  บันทึกคำแนะนำการลงทุนลงฐานข้อมูลและส่งผลลัพธ์ทั้งหมดกลับไปให้ผู้เรียก (Client)
+**กระบวนการทำงาน (Workflow):**
+1.  **สร้างคำแนะนำ:** Client ส่ง `userId`, `goalId`, และข้อมูลการเงินพื้นฐาน (รายได้, หนี้สิน) มายัง `POST /api/recommendations/generate`
+2.  **ดึงข้อมูล:** Backend ใช้ `userId` ที่ได้รับมาไปดึงข้อมูล **คำตอบแบบสอบถาม** จากตาราง `survey_answer` ในฐานข้อมูล
+3.  **วิเคราะห์:** ระบบนำข้อมูลทั้งหมดมาคำนวณ **Risk Profile** และสร้าง **คำแนะนำทั่วไป (General Advice)**
+4.  **สร้างแผนลงทุน:** ระบบดึงข้อมูลสินทรัพย์ทั้งหมด (`stocks`, `funds`) จากฐานข้อมูล แล้วสร้าง **แผนการลงทุน (Investment Plan)** ที่เหมาะสมกับผู้ใช้ (สูงสุด 3 ตัวเลือก)
+5.  **บันทึกผล:** ระบบบันทึกแผนการลงทุนที่สร้างขึ้นลงในตาราง `investment_recommendation` โดยผูกกับ `goalId`
+6.  **ดึงคำแนะนำ:** Client สามารถดึงแผนการลงทุนที่บันทึกไว้สำหรับเป้าหมายนั้นๆ ได้ตลอดเวลาผ่าน `GET /api/recommendations/goals/:goalId`
 
 ---
 
 ## 2. โครงสร้างไฟล์ (File Structure)
 
-หลังจากทำการ Refactor โครงสร้างไฟล์ที่สำคัญมีดังนี้:
+โครงสร้างไฟล์ที่สำคัญของโปรเจกต์มีดังนี้:
 
 ```
 backendscore/
@@ -37,7 +38,7 @@ backendscore/
 
 ---
 
-## 3. วิธีการนำไปใช้งานในโปรเจคหลัก (Integration Guide)
+## 3. วิธีการนำไปใช้งาน (Integration Guide)
 
 มี 2 วิธีหลักในการนำโปรเจกต์นี้ไปใช้:
 
@@ -51,7 +52,7 @@ backendscore/
 
 **ขั้นตอน:**
 1.  ในโปรเจกต์ `backendscore` สั่งรันเซิร์ฟเวอร์ (เช่น `npm start`)
-2.  จากโปรเจกต์หลัก ให้ยิง `POST` request มาที่ `http://<backendscore_host>:<port>/api/generate-recommendations`
+2.  จากโปรเจกต์หลัก (หรือ Postman) ให้ยิง `POST` request มาที่ `http://<backendscore_host>:<port>/api/recommendations/generate-recommendations`
 3.  ใน Body ของ Request ให้ส่ง JSON ที่มีหน้าตาแบบนี้:
     ```json
     {
@@ -77,39 +78,75 @@ backendscore/
 
 ---
 
-## 4. วิธีการทดสอบ (Testing Guide)
+## 4. วิธีการทดสอบด้วย Postman (Practical Guide)
 
-### ทดสอบผ่าน API Endpoint (Integration Test)
+คู่มือนี้จะแนะนำวิธีการทดสอบระบบทั้งหมด (End-to-End) โดยจำลองการยิง API จาก Client ผ่านโปรแกรม Postman
 
-1.  **Start Server:** รันเซิร์ฟเวอร์ด้วยคำสั่ง `npm start` หรือ `ts-node server.ts`
-2.  **Send Request:** ใช้เครื่องมืออย่าง Postman, Insomnia, หรือ `curl` เพื่อส่ง `POST` request ไปที่ `http://localhost:3000/api/generate-recommendations`
-3.  **Request Body:** ใส่ JSON ที่มี `userInput` และ `goalId` ให้ครบถ้วน
-    ```bash
-    curl -X POST http://localhost:3000/api/generate-recommendations \
-    -H "Content-Type: application/json" \
-    -d '{
-          "goalId": 1,
-          "userInput": {
-            "answers": [
-              {"question_id": 1, "answer_value": "A"},
-              {"question_id": 5, "answer_value": "CAPITAL_PRESERVATION"}
-            ],
-            "main_income_amount": 50000,
-            "side_income_amount": 0,
-            "debts": []
-          }
-        }'
+### ขั้นตอนที่ 1: การเตรียมข้อมูลในฐานข้อมูล (สำคัญมาก)
+
+เพื่อให้ระบบสามารถสร้าง "คำแนะนำการลงทุน" ได้ **คุณจำเป็นต้องมีข้อมูลสินทรัพย์ (Assets) ในฐานข้อมูลก่อน** เนื่องจาก Logic จะทำการดึงข้อมูลเหล่านี้มาพิจารณา
+
+**ตารางที่ต้องมีข้อมูล:** `assets`
+
+**ตัวอย่างคำสั่ง SQL สำหรับเพิ่มข้อมูลสินทรัพย์:**
+คุณสามารถรันคำสั่ง `INSERT` เหล่านี้ในโปรแกรมจัดการฐานข้อมูลของคุณ (เช่น DBeaver, MySQL Workbench) เพื่อเพิ่มข้อมูลตัวอย่างสำหรับทดสอบในแต่ละระดับความเสี่ยง
+
+```sql
+-- สินทรัพย์สำหรับโปรไฟล์ "Conservative"
+INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
+('fund', 'B-TREASURY', 'Conservative', 'GOVERNMENT'),
+('fund', 'K-CBOND-A(A)', 'Conservative', 'CORPORATE_BOND');
+
+-- สินทรัพย์สำหรับโปรไฟล์ "Moderate"
+INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
+('fund', 'K-CHANGE-A(A)', 'Moderate', 'ESG'),
+('stockTH', 'AOT', 'Moderate', 'TRANSPORT'),
+('stock', 'GOOGL', 'Moderate', 'TECH');
+
+-- สินทรัพย์สำหรับโปรไฟล์ "Aggressive"
+INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
+('stock', 'TSLA', 'Aggressive', 'TECH'),
+('stock', 'NVDA', 'Aggressive', 'TECH'),
+('fund', 'T-ES-GINNO', 'Aggressive', 'INNOVATION');
+```
+
+### ขั้นตอนที่ 2: การทดสอบใน Postman
+
+1.  **Start Server:** รันเซิร์ฟเวอร์ด้วยคำสั่ง `npm start` (หรือ `ts-node src/backend/server.ts`)
+2.  **ตั้งค่าใน Postman:**
+    *   **Method:** `POST`
+    *   **URL:** `http://localhost:3000/api/recommendations/generate-recommendations` (ถ้าคุณใช้ Port 3000)
+    *   **Headers:**
+        *   Key: `Content-Type`
+        *   Value: `application/json`
+    *   **Body:** เลือก `raw` และ `JSON`
+
+3.  **ใส่ข้อมูลใน Body:** คัดลอก JSON ตัวอย่างด้านล่างไปวางใน Body ของ Postman คุณสามารถแก้ไขค่าต่างๆ เพื่อทดสอบสถานการณ์ที่แตกต่างกันได้
+
+    **ตัวอย่าง Body สำหรับผู้ใช้ "Moderate" ที่สนใจ "TECH" และไม่มีหนี้:**
+    ```json
+    {
+      "goalId": 101,
+      "userInput": {
+        "answers": [
+          { "question_id": 1, "answer_value": "B" },
+          { "question_id": 2, "answer_value": "B" },
+          { "question_id": 3, "answer_value": "B" },
+          { "question_id": 4, "answer_value": "MUTUAL_FUND" },
+          { "question_id": 5, "answer_value": "STABLE_GROWTH" },
+          { "question_id": 6, "answer_value": "TECH" }
+        ],
+        "main_income_amount": 70000,
+        "side_income_amount": 10000,
+        "debts": []
+      }
+    }
     ```
-4.  **Verify Response:** ตรวจสอบ `JSON response` ที่ได้รับว่ามี `riskProfile` และ `recommendations` ถูกต้องหรือไม่
 
-### ทดสอบที่ระดับฟังก์ชัน (Unit Test)
-
-คุณสามารถเขียนเทสสำหรับแต่ละ Service ได้โดยตรงเพื่อทดสอบ Logic การทำงาน
-
-*   **ตัวอย่าง:** สร้างไฟล์ `services/recommendation.test.ts`
-*   `import` ฟังก์ชัน `getFinancialRecommendations`
-*   สร้างข้อมูล Mock `userInput`, `riskProfile`, `allAssetsFromDb`
-*   เรียกใช้ฟังก์ชันและ `assert` ผลลัพธ์ที่ได้ว่าเป็นไปตามที่คาดหวังหรือไม่
+4.  **กด "Send" และตรวจสอบผลลัพธ์:**
+    *   **Risk Profile:** ควรจะได้ `Moderate`
+    *   **General Advice:** ควรเป็นคำแนะนำเรื่องการออม (Saving)
+    *   **Investment Plan:** ควรจะแนะนำสินทรัพย์ที่มี `risk_profile` เป็น `Moderate` และ `industry_tag` เป็น `TECH` (เช่น `GOOGL`)
 
 ---
 

@@ -1,7 +1,7 @@
 
 import mysql from 'mysql2/promise';
 import 'dotenv/config';
-import { Asset, InvestmentRecommendationTarget } from '../type/type';
+import { Asset, InvestmentRecommendationTarget, SurveyAnswerRow, FetchedRecommendation } from '../type/type';
 
 // --- 1. DATABASE CONFIGURATION ---
 export const dbConfig = {
@@ -83,4 +83,65 @@ export async function saveRecommendationsToDb(connection: mysql.Connection, reco
   ]);
 
   await connection.query(sql, [values]);
+}
+
+/**
+ * Fetches all survey answers for a specific user from the database.
+ * @param connection - The database connection object.
+ * @param userId - The ID of the user whose answers are to be fetched.
+ * @returns A promise that resolves to an array of SurveyAnswerRow.
+ */
+export async function fetchUserAnswers(connection: mysql.Connection, userId: number): Promise<SurveyAnswerRow[]> {
+  const sql = `
+    SELECT question_id, answer_value 
+    FROM survey_answer 
+    WHERE user_id = ?;
+  `;
+
+  const [rows] = await connection.execute(sql, [userId]);
+  return rows as SurveyAnswerRow[];
+}
+
+/**
+ * Fetches saved investment recommendations for a specific goal, joining with asset tables to get details.
+ * @param connection - The database connection object.
+ * @param goalId - The ID of the goal whose recommendations are to be fetched.
+ * @returns A promise that resolves to an array of FetchedRecommendation.
+ */
+export async function fetchRecommendationsByGoalId(connection: mysql.Connection, goalId: number): Promise<FetchedRecommendation[]> {
+  const sql = `
+    -- US Stocks
+    SELECT 
+        s.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN stocks s ON ir.investment_ref_id = s.stock_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'stock'
+
+    UNION ALL
+
+    -- Thai Stocks
+    SELECT 
+        sth.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN stocksTH sth ON ir.investment_ref_id = sth.stock_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'stockTH'
+
+    UNION ALL
+
+    -- Funds
+    SELECT 
+        f.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN funds f ON ir.investment_ref_id = f.fund_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'fund';
+  `;
+
+  const [rows] = await connection.execute(sql, [goalId, goalId, goalId]);
+  return rows as FetchedRecommendation[];
 }

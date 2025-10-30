@@ -1,59 +1,113 @@
-
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import mysql from 'mysql2/promise';
-
-// --- 1. IMPORT TYPES AND SERVICES ---
-import { UserFinancialInput } from '../type/type';
-import { dbConfig, fetchAssetsFromDb, saveRecommendationsToDb } from '../services/database.service';
+import { dbConfig, fetchUserAnswers, fetchAssetsFromDb, saveRecommendationsToDb, fetchRecommendationsByGoalId } from '../services/database.service';
 import { calculateRiskProfile } from '../services/risk-profile.service';
 import { getFinancialRecommendations } from '../services/recommendation.service';
+import { UserFinancialInput } from '../type/type';
 
-// --- 2. CONTROLLER FUNCTION ---
-
-export const generateRecommendationsController = async (req: Request, res: Response) => {
+export const generateRecommendationsController = async (req: Request, res: Response, next: NextFunction) => {
   let connection: mysql.Connection | null = null;
+
   try {
-    // --- Input Validation ---
-    const { userInput, goalId }: { userInput: UserFinancialInput, goalId: number } = req.body;
-    if (!userInput || !goalId) {
-      return res.status(400).json({ error: 'Missing required fields: userInput and goalId' });
+    // --- 1. รับ Input จาก Client ---
+    // โฟลว์ใหม่: เราจะรับ userId และข้อมูลการเงิน แต่ไม่รับ answers
+    const { userId, goalId, main_income_amount, side_income_amount, debts } = req.body;
+
+    // --- ตรวจสอบ Input พื้นฐาน ---
+    if (!userId || !goalId || main_income_amount === undefined || side_income_amount === undefined || !debts) {
+      return res.status(400).json({
+        message: "Invalid input. Required fields: userId, goalId, main_income_amount, side_income_amount, debts",
+      });
     }
 
-    // --- Database Connection ---
+    // --- 2. เชื่อมต่อฐานข้อมูล ---
     connection = await mysql.createConnection(dbConfig);
 
-    // --- Step 1: Fetch assets from DB ---
-    const allAssetsFromDb = await fetchAssetsFromDb(connection);
-    if (allAssetsFromDb.length === 0) {
-      console.warn('Warning: No assets found in the database.');
+    // --- 3. ดึงข้อมูลที่จำเป็นจากฐานข้อมูล ---
+    // ดึงคำตอบของผู้ใช้จากตาราง survey_answer
+    const answersFromDb = await fetchUserAnswers(connection, userId);
+    if (answersFromDb.length === 0) {
+      return res.status(404).json({
+        message: `No survey answers found for user_id: ${userId}.`,
+      });
     }
 
-    // --- Step 2: Run the recommendation logic ---
-    const riskProfileResult = calculateRiskProfile(userInput);
+    // ดึงข้อมูลสินทรัพย์ทั้งหมด
+    const allAssetsFromDb = await fetchAssetsFromDb(connection);
+
+    // --- 4. ประกอบร่าง Input ที่สมบูรณ์ ---
+    const fullUserInput: UserFinancialInput = {
+      userId: userId,
+      answers: answersFromDb, // <-- ใช้คำตอบจาก DB
+      main_income_amount: main_income_amount,
+      side_income_amount: side_income_amount,
+      debts: debts,
+    };
+
+    // --- 5. ประมวลผลด้วย Rule-Based Engine ---
+    // คำนวณ Risk Profile
+    const riskProfileResult = calculateRiskProfile(fullUserInput);
+
+    // สร้างคำแนะนำ
     const { generalAdvice, investmentsToSave } = getFinancialRecommendations(
-      userInput,
+      fullUserInput,
       riskProfileResult,
       allAssetsFromDb,
       goalId
     );
 
-    // --- Step 3: Save the investment recommendations to the DB ---
-    await saveRecommendationsToDb(connection, investmentsToSave);
-    console.log(`✅ Successfully saved ${investmentsToSave.length} investment recommendations to the database for goal_id: ${goalId}.`);
+    // --- 6. บันทึกผลลัพธ์การลงทุนลงฐานข้อมูล ---
+    if (investmentsToSave.length > 0) {
+      await saveRecommendationsToDb(connection, investmentsToSave);
+    }
 
-    // --- Step 4: Send the response back to the client ---
+    // --- 7. ส่งผลลัพธ์กลับให้ Client ---
     res.status(200).json({
+      message: "Recommendations generated successfully.",
       riskProfile: riskProfileResult,
-      recommendations: {
-        generalAdvice,
-        investmentsToSave,
-      },
+      generalAdvice: generalAdvice,
+      // เราอาจจะไม่ต้องส่ง investmentsToSave กลับไปก็ได้ เพราะมันถูกบันทึกแล้ว
+      // แต่ส่งไปเพื่อให้เห็นผลลัพธ์ทันที
+      savedInvestments: investmentsToSave,
     });
 
   } catch (error) {
-    console.error('❌ API Error:', error);
-    res.status(500).json({ error: 'An internal server error occurred.' });
+    // ส่งต่อไปให้ Error Handler Middleware (ถ้ามี)
+    next(error);
   } finally {
+    // ปิดการเชื่อมต่อเสมอ
+    if (connection) {
+      await connection.end();
+    }
+  }
+};
+
+export const getRecommendationsByGoalController = async (req: Request, res: Response, next: NextFunction) => {
+  let connection: mysql.Connection | null = null;
+
+  try {
+    // --- 1. รับ Input จาก Client (URL parameter) ---
+    const goalId = parseInt(req.params.goalId, 10);
+
+    // --- ตรวจสอบ Input ---
+    if (isNaN(goalId)) {
+      return res.status(400).json({ message: "Invalid goalId. It must be a number." });
+    }
+
+    // --- 2. เชื่อมต่อฐานข้อมูล ---
+    connection = await mysql.createConnection(dbConfig);
+
+    // --- 3. ดึงข้อมูลคำแนะนำที่บันทึกไว้ ---
+    const recommendations = await fetchRecommendationsByGoalId(connection, goalId);
+
+    // --- 4. ส่งผลลัพธ์กลับให้ Client ---
+    res.status(200).json(recommendations);
+
+  } catch (error) {
+    // ส่งต่อไปให้ Error Handler Middleware
+    next(error);
+  } finally {
+    // ปิดการเชื่อมต่อเสมอ
     if (connection) {
       await connection.end();
     }

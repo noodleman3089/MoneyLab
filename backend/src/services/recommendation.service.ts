@@ -175,12 +175,35 @@ function getInvestmentSuggestion(
     interestFilteredAssets = riskFilteredAssets;
   }
 
-  // 5. ตัดสินใจ (Rule): เลือกมาแค่ 1 ตัว (ตัวแรก)
-  const selectedAsset = interestFilteredAssets[0];
-  return [{
-    goal_id: targetGoalId,
-    investment_type: selectedAsset.type,
-    investment_ref_id: selectedAsset.id,
-    recommended_allocation_percent: 100.00
-  }];
+  // 5. ตัดสินใจ (Rule): ปรับปรุงใหม่
+  // 5.1 สุ่มลำดับสินทรัพย์ที่กรองมาได้ เพื่อไม่ให้ได้ตัวเดิมทุกครั้ง
+  const shuffledAssets = interestFilteredAssets.sort(() => 0.5 - Math.random());
+
+  // 5.2 เลือกสินทรัพย์มาสูงสุด 3 ตัว
+  const MAX_ASSETS_TO_RECOMMEND = 3;
+  const selectedAssets = shuffledAssets.slice(0, MAX_ASSETS_TO_RECOMMEND);
+
+  // 5.3 ถ้าไม่มีสินทรัพย์ที่เลือกได้เลย ให้คืนค่าว่าง
+  if (selectedAssets.length === 0) {
+    return [];
+  }
+
+  // 5.4 คำนวณสัดส่วนการลงทุน (แบ่งเท่าๆ กัน)
+  const allocationPercent = parseFloat((100 / selectedAssets.length).toFixed(2));
+
+  // 5.5 สร้างผลลัพธ์ที่พร้อมสำหรับบันทึกลง DB
+  const recommendations: InvestmentRecommendationTarget[] = selectedAssets.map((asset, index) => {
+    // จัดการเศษทศนิยมโดยปัดให้ตัวสุดท้ายเพื่อให้รวมกันได้ 100% พอดี
+    const isLast = index === selectedAssets.length - 1;
+    const finalAllocation = isLast ? 100 - (allocationPercent * (selectedAssets.length - 1)) : allocationPercent;
+
+    return {
+      goal_id: targetGoalId,
+      investment_type: asset.type,
+      investment_ref_id: asset.id,
+      recommended_allocation_percent: parseFloat(finalAllocation.toFixed(2)),
+    };
+  });
+
+  return recommendations;
 }
