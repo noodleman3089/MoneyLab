@@ -9,6 +9,7 @@ import {
   SurveyAnswerRow,
   Asset,
   InvestmentRecommendationTarget,
+  GoalInfo,
 } from '../type/type'; // <-- ย้อนกลับ Path
 import { groupAnswers } from './risk-profile.service'; // นำเข้าฟังก์ชันจัดกลุ่มคำตอบ
 
@@ -61,7 +62,8 @@ export function getFinancialRecommendations(
   userInput: UserFinancialInput,
   riskProfile: RiskProfileResult,
   allAssetsFromDb: Asset[], // <-- 1. รับสินทรัพย์จริง
-  targetGoalId: number      // <-- 2. รับ Goal ID
+  targetGoalId: number,      // <-- 2. รับ Goal ID
+  goalInfo: GoalInfo        // <-- 3. รับข้อมูลเป้าหมายที่คำนวณแล้ว
 ): { generalAdvice: Recommendation[], investmentsToSave: InvestmentRecommendationTarget[] } { // <-- 3. เปลี่ยน Return type
 
   const recommendations: Recommendation[] = [];
@@ -122,7 +124,7 @@ export function getFinancialRecommendations(
   }
 
   // --- 4. คำแนะนำการลงทุน (ทำงานเสมอ) ---
-  const investmentResults = getInvestmentSuggestion(effectiveRiskProfile, surveyAnswers, allAssetsFromDb, targetGoalId);
+  const investmentResults = getInvestmentSuggestion(effectiveRiskProfile, surveyAnswers, allAssetsFromDb, targetGoalId, goalInfo);
   
   if (investmentResults.length > 0) {
     investmentsToSave.push(...investmentResults);
@@ -151,7 +153,8 @@ function getInvestmentSuggestion(
   riskProfile: RiskProfileResult,
   surveyAnswers: SurveyAnswerRow[],
   allAssets: Asset[],
-  targetGoalId: number
+  targetGoalId: number,
+  goalInfo: GoalInfo // <-- รับข้อมูลเป้าหมายเข้ามา
 ): InvestmentRecommendationTarget[] { // <-- คืนค่าเป็น Array ที่พร้อม Save
 
   // 1. ดึงความสนใจ (Interest): ดึงคำตอบข้อ 6
@@ -159,8 +162,20 @@ function getInvestmentSuggestion(
   const rawInterests = answers['6']; // Can be string, string[], or undefined
   const interestsArray = Array.isArray(rawInterests) ? rawInterests : (rawInterests ? [rawInterests] : []);
 
-  // 2. กรองขั้นที่ 1 (ตาม Risk)
-  const riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === riskProfile.profile);
+  // 2. กรองขั้นที่ 1 (ตาม Risk และ **ระยะเวลาเป้าหมาย**)
+  let riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === riskProfile.profile);
+
+  // --- กฎใหม่: ปรับการเลือกสินทรัพย์ตามระยะเวลา ---
+  if (goalInfo.calculatedDurationMonths <= 12) { // น้อยกว่าหรือเท่ากับ 1 ปี
+    // บังคับให้เลือกเฉพาะสินทรัพย์ความเสี่ยงต่ำสุดเท่านั้น
+    riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === 'Conservative');
+  } else if (goalInfo.calculatedDurationMonths <= 36) { // 1-3 ปี
+    // ไม่อนุญาตให้มีสินทรัพย์เสี่ยงสูง
+    riskFilteredAssets = riskFilteredAssets.filter(asset => asset.risk_profile !== 'Aggressive');
+  }
+  // ถ้ามากกว่า 3 ปี (37+ เดือน) ก็ใช้สินทรัพย์ตาม Risk Profile ของผู้ใช้ได้เลย
+  // -----------------------------------------
+
 
   // 6. (ถ้าไม่มีสินทรัพย์): ถ้ากรองตาม Risk แล้วไม่เจออะไรเลย ให้ return []
   if (riskFilteredAssets.length === 0) {

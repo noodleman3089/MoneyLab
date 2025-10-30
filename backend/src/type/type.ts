@@ -85,3 +85,15 @@ export interface FetchedRecommendation {
   type: 'stock' | 'stockTH' | 'fund';
   allocation: number;
 }
+
+/**
+ * หน้าตาของข้อมูลเป้าหมาย (Goal) ที่ดึงมาจาก DB
+ */
+export interface GoalInfo {
+  goalId: number;
+  targetAmount: number;
+  contributionAmount: number;
+  frequency: 'monthly' | 'weekly' | 'daily' | 'one-time';
+  // เพิ่ม Property ที่เราจะคำนวณขึ้นมาเอง
+  calculatedDurationMonths: number; 
+}

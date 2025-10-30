@@ -6,11 +6,11 @@
 
 **กระบวนการทำงาน (Workflow):**
 1.  **สร้างคำแนะนำ:** Client ส่ง `userId`, `goalId`, และข้อมูลการเงินพื้นฐาน (รายได้, หนี้สิน) มายัง `POST /api/recommendations/generate`
-2.  **ดึงข้อมูล:** Backend ใช้ `userId` ที่ได้รับมาไปดึงข้อมูล **คำตอบแบบสอบถาม** จากตาราง `survey_answer` ในฐานข้อมูล
-3.  **วิเคราะห์:** ระบบนำข้อมูลทั้งหมดมาคำนวณ **Risk Profile** และสร้าง **คำแนะนำทั่วไป (General Advice)**
-4.  **สร้างแผนลงทุน:** ระบบดึงข้อมูลสินทรัพย์ทั้งหมด (`stocks`, `funds`) จากฐานข้อมูล แล้วสร้าง **แผนการลงทุน (Investment Plan)** ที่เหมาะสมกับผู้ใช้ (สูงสุด 3 ตัวเลือก)
-5.  **บันทึกผล:** ระบบบันทึกแผนการลงทุนที่สร้างขึ้นลงในตาราง `investment_recommendation` โดยผูกกับ `goalId`
-6.  **ดึงคำแนะนำ:** Client สามารถดึงแผนการลงทุนที่บันทึกไว้สำหรับเป้าหมายนั้นๆ ได้ตลอดเวลาผ่าน `GET /api/recommendations/goals/:goalId`
+2.  **ดึงข้อมูล:** Backend ใช้ `userId` ที่ได้รับมาไปดึงข้อมูล **คำตอบแบบสอบถาม** จากตาราง `survey_answer` และใช้ `goalId` ไปดึง **ข้อมูลเป้าหมาย** จากตาราง `saving_goals`
+3.  **วิเคราะห์:** ระบบนำข้อมูลทั้งหมดมาคำนวณ **Risk Profile** (จากคำตอบ) และ **ระยะเวลาของเป้าหมาย** (จากข้อมูลเป้าหมาย) เพื่อสร้าง **คำแนะนำทั่วไป (General Advice)**
+4.  **สร้างแผนลงทุน:** ระบบดึงข้อมูลสินทรัพย์ทั้งหมด (`stocks`, `funds`, `stocksTH`) จากฐานข้อมูล แล้วสร้าง **รายการตัวเลือกการลงทุน (Investment Options)** ที่เหมาะสมกับผู้ใช้ โดยพิจารณาทั้ง Risk Profile และระยะเวลาของเป้าหมาย (แนะนำสูงสุดประเภทละ 3 ตัว)
+5.  **บันทึกผล:** ระบบบันทึกรายการตัวเลือกที่สร้างขึ้นลงในตาราง `investment_recommendation` โดยผูกกับ `goalId` (และตั้งค่า `recommended_allocation_percent` เป็น 0 เพื่อบ่งบอกว่าเป็น "ตัวเลือก")
+6.  **ดึงคำแนะนำ:** Client สามารถดึงรายการตัวเลือกการลงทุนที่บันทึกไว้สำหรับเป้าหมายนั้นๆ ได้ตลอดเวลาผ่าน `GET /api/recommendations/goals/:goalId`
 
 ---
 
@@ -78,36 +78,29 @@ backendscore/
 
 ---
 
-## 4. วิธีการทดสอบด้วย Postman (Practical Guide)
+## 4. การเตรียมข้อมูลสำหรับทดสอบ (Prerequisites)
 
-คู่มือนี้จะแนะนำวิธีการทดสอบระบบทั้งหมด (End-to-End) โดยจำลองการยิง API จาก Client ผ่านโปรแกรม Postman
+เพื่อให้ระบบทำงานได้อย่างสมบูรณ์ คุณจำเป็นต้องมีข้อมูลในตารางต่อไปนี้:
 
-### ขั้นตอนที่ 1: การเตรียมข้อมูลในฐานข้อมูล (สำคัญมาก)
-
-เพื่อให้ระบบสามารถสร้าง "คำแนะนำการลงทุน" ได้ **คุณจำเป็นต้องมีข้อมูลสินทรัพย์ (Assets) ในฐานข้อมูลก่อน** เนื่องจาก Logic จะทำการดึงข้อมูลเหล่านี้มาพิจารณา
-
-**ตารางที่ต้องมีข้อมูล:** `assets`
+1.  **`users`**: ต้องมีข้อมูลผู้ใช้อย่างน้อย 1 คน
+2.  **`saving_goals`**: ต้องมีข้อมูลเป้าหมายการออมที่ผูกกับ `user_id` นั้นๆ
+3.  **`survey_answer`**: ต้องมีข้อมูลคำตอบแบบสอบถามที่ผูกกับ `user_id` นั้นๆ
+4.  **`stocks`, `stocksTH`, `funds`**: ต้องมีข้อมูลสินทรัพย์สำหรับใช้ในการสร้างคำแนะนำ
 
 **ตัวอย่างคำสั่ง SQL สำหรับเพิ่มข้อมูลสินทรัพย์:**
-คุณสามารถรันคำสั่ง `INSERT` เหล่านี้ในโปรแกรมจัดการฐานข้อมูลของคุณ (เช่น DBeaver, MySQL Workbench) เพื่อเพิ่มข้อมูลตัวอย่างสำหรับทดสอบในแต่ละระดับความเสี่ยง
 
 ```sql
--- สินทรัพย์สำหรับโปรไฟล์ "Conservative"
-INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
-('fund', 'B-TREASURY', 'Conservative', 'GOVERNMENT'),
-('fund', 'K-CBOND-A(A)', 'Conservative', 'CORPORATE_BOND');
-
--- สินทรัพย์สำหรับโปรไฟล์ "Moderate"
-INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
-('fund', 'K-CHANGE-A(A)', 'Moderate', 'ESG'),
-('stockTH', 'AOT', 'Moderate', 'TRANSPORT'),
-('stock', 'GOOGL', 'Moderate', 'TECH');
-
--- สินทรัพย์สำหรับโปรไฟล์ "Aggressive"
-INSERT INTO assets (type, symbol, risk_profile, industry_tag) VALUES 
-('stock', 'TSLA', 'Aggressive', 'TECH'),
-('stock', 'NVDA', 'Aggressive', 'TECH'),
-('fund', 'T-ES-GINNO', 'Aggressive', 'INNOVATION');
+-- เพิ่มข้อมูลกองทุน
+INSERT INTO funds (symbol, category) VALUES 
+('B-TREASURY', 'GOVERNMENT'),
+('K-CHANGE-A(A)', 'ESG');
+-- เพิ่มข้อมูลหุ้นไทย
+INSERT INTO stocksTH (symbol, industry, sector) VALUES 
+('AOT', 'Services', 'TRANSPORT');
+-- เพิ่มข้อมูลหุ้นต่างประเทศ
+INSERT INTO stocks (symbol, industry, sector) VALUES 
+('GOOGL', 'Technology', 'Communication Services'),
+('TSLA', 'Consumer Cyclical', 'Auto Manufacturers');
 ```
 
 ### ขั้นตอนที่ 2: การทดสอบใน Postman

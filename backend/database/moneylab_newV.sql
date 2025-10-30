@@ -253,9 +253,21 @@ CREATE TABLE IF NOT EXISTS saving_goals (
   goal_name VARCHAR(150) NOT NULL,
   target_amount DECIMAL(14,2) NOT NULL,
   current_amount DECIMAL(14,2) NOT NULL DEFAULT 0,
-  monthly_contribution DECIMAL(14,2) NOT NULL DEFAULT 0,
-  duration_months INT NULL,
+  
+  -- ▼▼▼ ส่วนที่เปลี่ยนแปลง ▼▼▼ --
+  
+  -- 1. เปลี่ยนชื่อจาก monthly_contribution
+  contribution_amount DECIMAL(14,2) NOT NULL DEFAULT 0, 
+  
+  -- 2. ลบ duration_months ทิ้งไป
+  
   frequency ENUM('monthly','weekly','daily','one-time') DEFAULT 'monthly',
+  
+  -- 3. เพิ่มคอลัมน์นี้สำหรับระบบหักเงินอัตโนมัติ
+  next_deduction_date DATE NULL, 
+  
+  -- ▲▲▲ สิ้นสุดส่วนที่เปลี่ยนแปลง ▲▲▲ --
+
   status ENUM('active','paused','completed','cancelled') NOT NULL DEFAULT 'active',
   start_date DATE NULL,
   completed_at TIMESTAMP NULL,
@@ -263,7 +275,9 @@ CREATE TABLE IF NOT EXISTS saving_goals (
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
   CONSTRAINT chk_goal_target_pos CHECK (target_amount > 0),
-  CONSTRAINT chk_goal_monthly_nonneg CHECK (monthly_contribution >= 0),
+  
+  -- อย่าลืมเปลี่ยนชื่อ Constraint นี้ด้วย
+  CONSTRAINT chk_goal_contribution_nonneg CHECK (contribution_amount >= 0), 
 
   CONSTRAINT fk_goal_user FOREIGN KEY (user_id) REFERENCES users(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
@@ -277,6 +291,8 @@ CREATE TABLE IF NOT EXISTS saving_goals (
 CREATE INDEX ix_goal_user ON saving_goals(user_id);
 CREATE INDEX ix_goal_wallet ON saving_goals(wallet_id);
 
+-- เพิ่ม Index นี้ด้วย จะช่วยให้ Cron Job ทำงานเร็วขึ้นมาก
+CREATE INDEX ix_goal_next_deduction ON saving_goals(status, next_deduction_date);
 -- ========================
 -- saving_transactions (contributions / withdrawals to goals)
 -- ========================

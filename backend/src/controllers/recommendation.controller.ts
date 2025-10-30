@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import mysql from 'mysql2/promise';
-import { dbConfig, fetchUserAnswers, fetchAssetsFromDb, saveRecommendationsToDb, fetchRecommendationsByGoalId } from '../services/database.service';
+import { pool, fetchUserAnswers, fetchAssetsFromDb, saveRecommendationsToDb, fetchRecommendationsByGoalId, fetchAndCalculateGoalInfo } from '../services/database.service';
 import { calculateRiskProfile } from '../services/risk-profile.service';
 import { getFinancialRecommendations } from '../services/recommendation.service';
-import { UserFinancialInput } from '../type/type';
+import { UserFinancialInput, GoalInfo } from '../type/type';
 
 export const generateRecommendationsController = async (req: Request, res: Response, next: NextFunction) => {
-  let connection: mysql.Connection | null = null;
+  let connection: mysql.PoolConnection | null = null; // แก้ไข Type ตรงนี้
 
   try {
     // --- 1. รับ Input จาก Client ---
@@ -21,7 +21,7 @@ export const generateRecommendationsController = async (req: Request, res: Respo
     }
 
     // --- 2. เชื่อมต่อฐานข้อมูล ---
-    connection = await mysql.createConnection(dbConfig);
+    connection = await pool.getConnection(); // ดึง connection จาก pool
 
     // --- 3. ดึงข้อมูลที่จำเป็นจากฐานข้อมูล ---
     // ดึงคำตอบของผู้ใช้จากตาราง survey_answer
@@ -29,6 +29,14 @@ export const generateRecommendationsController = async (req: Request, res: Respo
     if (answersFromDb.length === 0) {
       return res.status(404).json({
         message: `No survey answers found for user_id: ${userId}.`,
+      });
+    }
+
+    // ดึงข้อมูลเป้าหมายและคำนวณระยะเวลา
+    const goalInfo = await fetchAndCalculateGoalInfo(connection, goalId);
+    if (!goalInfo) {
+      return res.status(404).json({
+        message: `Goal with id: ${goalId} not found.`,
       });
     }
 
@@ -53,7 +61,8 @@ export const generateRecommendationsController = async (req: Request, res: Respo
       fullUserInput,
       riskProfileResult,
       allAssetsFromDb,
-      goalId
+      goalId,
+      goalInfo // <-- ส่งข้อมูลเป้าหมายที่คำนวณแล้วเข้าไปด้วย
     );
 
     // --- 6. บันทึกผลลัพธ์การลงทุนลงฐานข้อมูล ---
@@ -77,13 +86,13 @@ export const generateRecommendationsController = async (req: Request, res: Respo
   } finally {
     // ปิดการเชื่อมต่อเสมอ
     if (connection) {
-      await connection.end();
+      connection.release(); // คืน connection กลับเข้า pool
     }
   }
 };
 
 export const getRecommendationsByGoalController = async (req: Request, res: Response, next: NextFunction) => {
-  let connection: mysql.Connection | null = null;
+  let connection: mysql.PoolConnection | null = null; // แก้ไข Type ตรงนี้
 
   try {
     // --- 1. รับ Input จาก Client (URL parameter) ---
@@ -95,7 +104,7 @@ export const getRecommendationsByGoalController = async (req: Request, res: Resp
     }
 
     // --- 2. เชื่อมต่อฐานข้อมูล ---
-    connection = await mysql.createConnection(dbConfig);
+    connection = await pool.getConnection(); // ดึง connection จาก pool
 
     // --- 3. ดึงข้อมูลคำแนะนำที่บันทึกไว้ ---
     const recommendations = await fetchRecommendationsByGoalId(connection, goalId);
@@ -109,7 +118,7 @@ export const getRecommendationsByGoalController = async (req: Request, res: Resp
   } finally {
     // ปิดการเชื่อมต่อเสมอ
     if (connection) {
-      await connection.end();
+      connection.release();
     }
   }
 };
