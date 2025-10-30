@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS category (
   category_id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   category_name VARCHAR(100) NOT NULL,
-  category_type ENUM('income','expense','transfer') NOT NULL
+  category_type ENUM('income','expense','transfer') NOT NULL,
   UNIQUE KEY uq_category_name_type (category_name, category_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -351,27 +351,6 @@ CREATE TABLE IF NOT EXISTS funds (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
--- investment_recommendation
--- link between saving_goal and investment with percent
--- ========================
-CREATE TABLE IF NOT EXISTS investment_recommendation (
-  recommendation_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  goal_id BIGINT UNSIGNED NOT NULL,
-  investment_id BIGINT UNSIGNED NOT NULL,
-  recommended_allocation_percent DECIMAL(5,2) NOT NULL CHECK (recommended_allocation_percent >= 0 AND recommended_allocation_percent <= 100),
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT fk_ir_goal FOREIGN KEY (goal_id) REFERENCES saving_goals(goal_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-
-  CONSTRAINT fk_ir_investment FOREIGN KEY (investment_id) REFERENCES investment(investment_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE INDEX ix_ir_goal ON investment_recommendation(goal_id);
-CREATE INDEX ix_ir_investment ON investment_recommendation(investment_id);
-
--- ========================
 -- notifications
 -- ========================
 CREATE TABLE IF NOT EXISTS notifications (
@@ -450,6 +429,17 @@ CREATE TABLE IF NOT EXISTS survey_question (
   options JSON NULL, -- array of choice options for choice questions
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS survey_answer (
+  answer_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  question_id BIGINT UNSIGNED NOT NULL,
+  answer_value TEXT NULL,
+  answered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sa_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_sa_question FOREIGN KEY (question_id) REFERENCES survey_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- คำถามที่ 1: วัดทัศนคติต่อความเสี่ยง (Risk Tolerance)
