@@ -1,6 +1,6 @@
 
 import { Router } from 'express';
-import { generateRecommendationsController } from '../controller/recommendation.controller';
+import { generateRecommendationsController } from '../../controllers/recommendation.controller';
 
 const router = Router();
 

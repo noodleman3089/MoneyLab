@@ -13,6 +13,7 @@ import DailyBudgetrouter from "./routes/daily_budget";
 import savingGoalsRoutes from './routes/savingGoals';
 import walletRouter from './routes/wallet';
 import savingTransactionRoutes from './routes/saving_transactions';
+import surveyRouter from './routes/survey';
 //Controllers
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
@@ -177,8 +178,6 @@ app.delete('/api/users/soft/:id', verifyAdmin, async (req: Request, res: Respons
 // Routes
 app.use('/api', profileRoutes);
 
-app.use('/api', loginControllers);
-
 app.use('/api/transactions', transactionRoutes);
 
 app.use('/api/transactions/ocr', transactionsOCR);
@@ -191,11 +190,15 @@ app.use('/api/wallet', walletRouter);
 
 app.use('/api/saving-transactions', savingTransactionRoutes);
 
+app.use('/api/survey', surveyRouter);
+
+
 //Controllers
 app.use('/api', registerControllers);
 
 app.use('/api', resetPasswordRoutes);
 
+app.use('/api', loginControllers);
 // Start Web servert
 app.listen(PORT, () => {
   console.log(`Server is running at http://localhost:${PORT}`);

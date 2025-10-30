@@ -1,4 +1,4 @@
-import { Customer, RecommendationResult } from '../models/types';
+import { Customer, RecommendationResult } from '../types/customer.types';
 import { RiskProfileCalculator } from './risk-profile.calculator';
 
 export class RecommendationEngine {

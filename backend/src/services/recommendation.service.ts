@@ -9,7 +9,7 @@ import {
   SurveyAnswerRow,
   Asset,
   InvestmentRecommendationTarget,
-} from '../type'; // <-- ย้อนกลับ Path
+} from '../type/type'; // <-- ย้อนกลับ Path
 import { groupAnswers } from './risk-profile.service'; // นำเข้าฟังก์ชันจัดกลุ่มคำตอบ
 
 // ========================================================

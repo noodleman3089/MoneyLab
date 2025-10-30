@@ -1,5 +1,5 @@
 import express from 'express';
-import { recommendationRoutes } from './routes/recommendation.routes';
+import  recommendationRoutes  from './routes/recommendation.routes';
 
 const app = express();
 const port = process.env.PORT || 3000;

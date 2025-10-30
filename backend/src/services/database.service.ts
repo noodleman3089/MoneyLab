@@ -1,7 +1,7 @@
 
 import mysql from 'mysql2/promise';
 import 'dotenv/config';
-import { Asset, InvestmentRecommendationTarget } from '../type';
+import { Asset, InvestmentRecommendationTarget } from '../type/type';
 
 // --- 1. DATABASE CONFIGURATION ---
 export const dbConfig = {
