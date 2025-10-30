@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
-import bcrypt from 'bcryptjs';
 import path from 'path';
+import * as crypto from 'crypto';
 //Routes
 import resetPasswordRoutes from './routes/reset_password';
 import profileRoutes from './routes/profile';
@@ -65,22 +65,6 @@ export function query(sql: string, params: any[] = []): Promise<any> {
  * USERS CRUD
  */
 
-// CREATE - เพิ่ม user ใหม่
-app.post('/api/users', async (req: Request, res: Response) => {
-  try {
-    const { username, email, phone_number, password } = req.body;
-    const salt = await bcrypt.genSalt(10);
-    const password_hash = await bcrypt.hash(password, salt);
-
-    const sql = `INSERT INTO users (username, email, phone_number, password_hash) VALUES (?, ?, ?, ?)`;
-    await query(sql, [username, email, phone_number, password_hash]);
-
-    res.json({ status: true, message: 'User created successfully' });
-  } catch (err: any) {
-    res.status(500).json({ status: false, message: 'Failed to create user', error: err.message });
-  }
-});
-
 // READ - ดึง users ทั้งหมด
 app.get('/api/users', verifyAdmin, async (req: Request, res: Response) => {
   try {
@@ -127,6 +111,66 @@ app.get('/api/users', verifyAdmin, async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ status: false, message: 'Failed to fetch users', error: err.message });
+  }
+});
+
+// DELETE - ลบ user
+app.delete('/api/users/:id', verifyAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const sql = `DELETE FROM users WHERE user_id = ?`;
+    const result = await query(sql, [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+    res.json({ status: true, message: 'User deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ status: false, message: 'Failed to delete user', error: err.message });
+  }
+});
+
+app.delete('/api/users/soft/:id', verifyAdmin, async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // ตรวจสอบว่าผู้ใช้อยู่จริง
+    const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ status: false, message: 'User not found' });
+    }
+
+    // สร้าง hash สำหรับแทนข้อมูลส่วนตัว
+    const hash = crypto.createHash('sha256').update(`deleted-${id}-${Date.now()}`).digest('hex');
+
+    // อัปเดต user ให้ไม่สามารถใช้งานได้ และ hash ข้อมูลส่วนตัว
+    await query(
+      `UPDATE users 
+       SET 
+         username = CONCAT('deleted_', ?),
+         email = NULL,
+         phone_number = NULL,
+         password_hash = NULL,
+         role = 'user',
+         updated_at = NOW()
+       WHERE user_id = ?`,
+      [hash.substring(0, 12), id]
+    );
+
+    // ถ้าคุณมีฟิลด์ is_active หรือ is_deleted:
+    // await query('UPDATE users SET is_active = 0, deleted_at = NOW() WHERE user_id = ?', [id]);
+
+    res.json({
+      status: true,
+      message: 'User data hashed and account deactivated successfully',
+    });
+  } catch (err: any) {
+    console.error('❌ Delete (hash) user error:', err);
+    res.status(500).json({
+      status: false,
+      message: 'Failed to hash user data',
+      error: err.message,
+    });
   }
 });
 

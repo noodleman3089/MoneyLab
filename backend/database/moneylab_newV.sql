@@ -28,20 +28,6 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
--- otp_verification
--- ========================
-CREATE TABLE IF NOT EXISTS otp_verification (
-  id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  email VARCHAR(255) NOT NULL,
-  otp_code VARCHAR(10) NOT NULL,
-  username VARCHAR(100) NOT NULL,
-  phone_number VARCHAR(20) NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  expires_at DATETIME NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  verified TINYINT(1) DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
--- ========================
 -- category (lookup)
 -- ========================
 CREATE TABLE IF NOT EXISTS category (
@@ -223,47 +209,14 @@ CREATE TABLE IF NOT EXISTS profile (
     ON DELETE SET NULL ON UPDATE CASCADE,
 
   CONSTRAINT fk_profile_side_period FOREIGN KEY (side_income_period_id) REFERENCES income_period(period_id)
-    ON DELETE SET NULL ON UPDATE CASCADE
+    ON DELETE SET NULL ON UPDATE CASCADE,
+
+  UNIQUE KEY uq_profile_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX ix_profile_occ ON profile(occupation_id);
 CREATE INDEX ix_profile_main_period ON profile(main_income_period_id);
 CREATE INDEX ix_profile_side_period ON profile(side_income_period_id);
-
--- ========================
--- debt (1:N with profile)
--- ========================
-CREATE TABLE IF NOT EXISTS debt (
-  debt_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  profile_id BIGINT UNSIGNED NOT NULL COMMENT 'FK ชี้ไปที่ profile ของผู้ใช้',
-
-  debt_type VARCHAR(100) NOT NULL COMMENT 'ประเภทหนี้ (เช่น บัตรเครดิต, สินเชื่อรถ, สินเชื่อบ้าน, กยศ.)',
-  debt_amount DECIMAL(14, 2) NOT NULL DEFAULT 0.00 COMMENT 'ยอดหนี้คงเหลือ',
-  
-  -- === คอลัมน์สำคัญสำหรับ Logic ===
-  debt_interest_rate DECIMAL(5, 2) NOT NULL DEFAULT 0.00 COMMENT 'อัตราดอกเบี้ยต่อปี (เช่น 18.50 สำหรับ 18.5%)',
-  debt_monthly_payment DECIMAL(12, 2) NOT NULL DEFAULT 0.00 COMMENT 'ยอดผ่อนชำระต่อเดือน',
-  -- ===============================
-  
-  debt_duration_months INT UNSIGNED NULL COMMENT 'ระยะเวลาผ่อนที่เหลือ (เดือน)',
-
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  -- === Constraints ===
-  CONSTRAINT fk_debt_profile FOREIGN KEY (profile_id)
-    REFERENCES profile(profile_id)
-    ON DELETE CASCADE ON UPDATE CASCADE,
-    
-  -- ตรวจสอบว่าค่าเป็นบวกเสมอ
-  CONSTRAINT chk_debt_amount_nonneg CHECK (debt_amount >= 0),
-  CONSTRAINT chk_debt_rate_nonneg CHECK (debt_interest_rate >= 0),
-  CONSTRAINT chk_debt_payment_nonneg CHECK (debt_monthly_payment >= 0)
-
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- สร้าง Index เพื่อการค้นหาที่รวดเร็ว
-CREATE INDEX ix_debt_profile ON debt(profile_id);
 
 -- ========================
 -- saving_goals
@@ -329,47 +282,19 @@ CREATE INDEX ix_saving_tx_wallet ON saving_transactions(wallet_id);
 -- ========================
 -- investment
 -- ========================
-CREATE TABLE IF NOT EXISTS stocks (
-  stock_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  symbol VARCHAR(32) NOT NULL,
-  long_name VARCHAR(255) NULL,
+CREATE TABLE IF NOT EXISTS investment (
+  investment_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  stock_symbol VARCHAR(32) NOT NULL,
+  stock_name VARCHAR(255) NULL,
   current_price DECIMAL(18,6) NULL,
   market_cap DECIMAL(20,2) NULL,
   sector VARCHAR(100) NULL,
-  industry VARCHAR(100) NULL,
+  risk_level ENUM('low','medium','high') DEFAULT 'medium',
+  historical_return DECIMAL(6,4) NULL,
   last_updated TIMESTAMP NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_stock_symbol (symbol)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS stocksTH (
-  stock_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  symbol VARCHAR(32) NOT NULL,
-  long_name VARCHAR(255) NULL,
-  current_price DECIMAL(18,6) NULL,
-  market_cap DECIMAL(20,2) NULL,
-  sector VARCHAR(100) NULL,
-  industry VARCHAR(100) NULL,
-  last_updated TIMESTAMP NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_stock_symbol (symbol)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS funds (
-  fund_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  symbol VARCHAR(32) NOT NULL,
-  long_name VARCHAR(255) NULL,
-  current_price DECIMAL(18,6) NULL,
-  category VARCHAR(100) NULL,
-  total_assets DECIMAL(20,2) NULL,
-  nav_price DECIMAL(18,6) NULL,
-  ytd_return DECIMAL(8,6) NULL,
-  last_updated TIMESTAMP NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_fund_symbol (symbol)
+  UNIQUE KEY uq_investment_symbol (stock_symbol)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
@@ -468,88 +393,23 @@ CREATE INDEX ix_log_actor_type ON `log` (actor_type);
 CREATE TABLE IF NOT EXISTS survey_question (
   question_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   question_text TEXT NOT NULL,
-  question_type ENUM('single_choice','multi_choice') NOT NULL,
+  question_type ENUM('text','single_choice','multi_choice','number','rating') NOT NULL DEFAULT 'text',
   options JSON NULL, -- array of choice options for choice questions
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- คำถามที่ 1: วัดทัศนคติต่อความเสี่ยง (Risk Tolerance)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('สมมติว่าคุณลงทุน 100,000 บาท หนึ่งเดือนต่อมา ตลาดผันผวนหนัก ทำให้เงินของคุณเหลือ 80,000 บาท (ขาดทุน 20,000 บาท) คุณจะทำอย่างไร?', 'single_choice',
-'[{"value": "A", "label": "ขายทิ้งทันทีทั้งหมด เพราะรับไม่ได้ที่จะขาดทุนไปมากกว่านี้"},
-  {"value": "B", "label": "ถือไว้ก่อน และติดตามสถานการณ์อย่างใกล้ชิด"},
-  {"value": "C", "label": "ซื้อเพิ่ม เพราะคิดว่าเป็นโอกาสที่ดีในการซื้อของถูก"},
-  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
-
--- คำถามที่ 2: วัดวินัยทางการเงิน (Spending Behavior)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('ข้อใดอธิบายพฤติกรรมการใช้เงินของคุณได้ดีที่สุด?', 'single_choice',
-'[{"value": "A", "label": "ฉันวางแผนงบประมาณ (Budget) อย่างเคร่งครัด และใช้เงินตามแผนเสมอ"},
-  {"value": "B", "label": "พยายามจะออม แต่บางครั้งก็ใช้จ่ายตามอารมณ์บ้าง"},
-  {"value": "C", "label": "มักจะใช้เงินก่อน แล้วค่อยออมส่วนที่เหลือ (ถ้ามี)"},
-  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
-
--- คำถามที่ 3: วัดความมั่นคงทางการเงิน (Financial Stability)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('คุณมี ''เงินสำรองฉุกเฉิน'' (เงินสดที่ครอบคลุมค่าใช้จ่าย 3-6 เดือน) แล้วหรือยัง?', 'single_choice',
-'[{"value": "A", "label": "มีครบถ้วนแล้ว"},
-  {"value": "B", "label": "มีบ้าง แต่ยังไม่ครบ 3-6 เดือน"},
-  {"value": "C", "label": "ยังไม่มีเลย"},
-  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
-
--- คำถามที่ 4: วัดความรู้ด้านการลงทุน (Financial Knowledge)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('คุณมีความเข้าใจหรือคุ้นเคยกับผลิตภัณฑ์การเงินใดบ้าง? (เลือกได้หลายข้อ)', 'multi_choice',
-'[{"value": "SAVINGS", "label": "เงินฝากออมทรัพย์ / ฝากประจำ"},
-  {"value": "MUTUAL_FUND", "label": "กองทุนรวม (เช่น กองทุนตราสารหนี้, กองทุนหุ้น)"},
-  {"value": "STOCK", "label": "หุ้นรายตัว"},
-  {"value": "BOND", "label": "ตราสารหนี้ (พันธบัตร)"},
-  {"value": "CRYPTO", "label": "สินทรัพย์ดิจิทัล (Cryptocurrency)"},
-  {"value": "NONE", "label": "ไม่คุ้นเคยกับการลงทุนใดๆ เลย"}]');
-
--- คำถามที่ 5: วัดเป้าหมายเชิงคุณภาพ (Qualitative Goal)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('อะไรคือเป้าหมายหลัก ''ที่แท้จริง'' ของการลงทุนนี้?', 'single_choice',
-'[{"value": "CAPITAL_PRESERVATION", "label": "เพื่อรักษาเงินต้นให้ปลอดภัย (ชนะเงินเฟ้อ)"},
-  {"value": "STABLE_GROWTH", "label": "เพื่อให้เงินงอกเงยอย่างมั่นคง (วางแผนเกษียณ, ซื้อบ้าน)"},
-  {"value": "MAX_RETURN", "label": "เพื่อสร้างผลตอบแทนสูงสุด แม้จะต้องเสี่ยงสูง (สร้างความมั่งคั่ง)"},
-  {"value": "SKIP", "label": "ไม่แน่ใจ / ขอข้ามข้อนี้"}]');
-
--- คำถามที่ 6: วัดความสนใจ (Personal Interest)
-INSERT INTO survey_question (question_text, question_type, options) VALUES
-('คุณสนใจลงทุนในอุตสาหกรรมใดเป็นพิเศษ? (เลือกได้หลายข้อ)', 'multi_choice',
-'[{"value": "TECH", "label": "เทคโนโลยี (Tech) / นวัตกรรม"},
-  {"value": "HEALTHCARE", "label": "สุขภาพ (Healthcare)"},
-  {"value": "ENERGY_UTILITIES", "label": "พลังงาน / สาธารณูปโภค (Energy / Utilities)"},
-  {"value": "CONSUMER", "label": "สินค้าอุปโภคบริโภค (Consumer Goods)"},
-  {"value": "FINANCE", "label": "การเงิน / ธนาคาร (Finance / Banking)"},
-  {"value": "ANY", "label": "ไม่มีอะไรเป็นพิเศษ / ให้ระบบแนะนำได้เลย"}]');
-
--- ========================
--- investment_recommendation (Polymorphic Version)
--- ========================
-CREATE TABLE IF NOT EXISTS investment_recommendation (
-  recommendation_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  goal_id BIGINT UNSIGNED NOT NULL COMMENT 'FK ชี้ไปที่ saving_goals',
-  
-  -- === ส่วนที่รองรับ 3 ตาราง (stocks, stocksTH, funds) ===
-  investment_type ENUM('stock', 'stockTH', 'fund') NOT NULL COMMENT 'บอกว่าสินทรัพย์นี้มาจากตารางไหน',
-  investment_ref_id BIGINT UNSIGNED NOT NULL COMMENT 'ID ที่อ้างอิง (เช่น stock_id หรือ fund_id)',
-  -- ===================================================
-  
-  recommended_allocation_percent DECIMAL(5,2) NOT NULL CHECK (recommended_allocation_percent >= 0 AND recommended_allocation_percent <= 100),
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  -- Foreign Key ไปที่ goal
-  CONSTRAINT fk_ir_goal FOREIGN KEY (goal_id) REFERENCES saving_goals(goal_id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-
+CREATE TABLE IF NOT EXISTS survey_answer (
+  answer_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  question_id BIGINT UNSIGNED NOT NULL,
+  answer_value TEXT NULL,
+  answered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_sa_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_sa_question FOREIGN KEY (question_id) REFERENCES survey_question(question_id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- สร้าง Index เพื่อการค้นหาที่รวดเร็ว
-CREATE INDEX ix_ir_goal ON investment_recommendation(goal_id);
-CREATE INDEX ix_ir_investment_poly ON investment_recommendation(investment_type, investment_ref_id);
 CREATE INDEX ix_survey_user ON survey_answer(user_id);
 CREATE INDEX ix_survey_question ON survey_answer(question_id);
 
