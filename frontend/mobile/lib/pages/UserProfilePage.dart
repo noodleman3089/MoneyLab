@@ -72,7 +72,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ),
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
@@ -111,7 +114,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.2),
+                                      color: Colors.black.withOpacity(0.2),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -259,7 +262,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -342,13 +345,13 @@ class _UserProfilePageState extends State<UserProfilePage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withValues(alpha: 0.3)),
+              border: Border.all(color: color.withOpacity(0.3)),
             ),
             child: Text(
               '฿ $amount',
-              style: GoogleFonts.beVietnamPro(
+              style: TextStyle(
                 fontSize: isBold ? 18 : 16,
                 fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
                 color: color,
@@ -373,12 +376,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
             onTap: () {
               // TODO: นำไปหน้าตั้งค่า
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'ฟีเจอร์ตั้งค่า (เร็วๆ นี้)',
-                    style: GoogleFonts.beVietnamPro(),
-                  ),
-                ),
+                const SnackBar(content: Text('ฟีเจอร์ตั้งค่า (เร็วๆ นี้)')),
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+          _buildActionButton(
+            icon: Icons.help_outline,
+            label: 'ช่วยเหลือ',
+            color: Colors.blue.shade600,
+            onTap: () {
+              // TODO: นำไปหน้าช่วยเหลือ
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('ฟีเจอร์ช่วยเหลือ (เร็วๆ นี้)')),
               );
             },
           ),
@@ -412,7 +422,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: 0.3)),
+            border: Border.all(color: color.withOpacity(0.3)),
           ),
           child: Row(
             children: [
