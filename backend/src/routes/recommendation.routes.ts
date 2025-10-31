@@ -10,3 +10,4 @@ router.post('/generate', generateRecommendationsController);
 router.get('/goals/:goalId', getRecommendationsByGoalController);
 
 export default router;
+

@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { query } from '../../index';
+import { query } from '../index';
 
 const controllers_L = express();
 const SECRET_KEY = process.env.SECRET_KEY || '1234'; 
@@ -27,7 +27,7 @@ controllers_L.post('/login',
     );
 
     if (users.length === 0) {
-      return res.status(401).send({ message: 'Invalid username/email or password', status: false });
+      return res.status(401).send({ message: 'Invalid username/email', status: false });
     }
 
     const user = users[0];
@@ -35,7 +35,7 @@ controllers_L.post('/login',
     // ใช้ password_hash ตาม table
     const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
     if (!isPasswordValid) {
-      return res.status(401).send({ message: 'Invalid username/email or password', status: false });
+      return res.status(401).send({ message: 'Invalid password', status: false });
     }
 
     await query('UPDATE users SET last_login_at = NOW() WHERE user_id = ?',[user.user_id]);

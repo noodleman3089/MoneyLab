@@ -1,10 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
-import jwt from 'jsonwebtoken';
-import { query } from '../../index';
+import { query } from '../index';
+import { authenticateToken } from '../middlewares/authMiddleware';
 
 const routerP = express.Router();
-const SECRET_KEY = process.env.SECRET_KEY || '1234';
 
 interface JwtPayload {
   user_id: number;
@@ -14,18 +13,6 @@ interface JwtPayload {
 interface AuthRequest extends Request {
   user?: JwtPayload;
 }
-
-const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  if (!token) return res.status(401).json({ status: false, message: 'No token provided' });
-
-  jwt.verify(token, SECRET_KEY, (err, decoded) => {
-    if (err) return res.status(403).json({ status: false, message: 'Invalid token' });
-    req.user = decoded as JwtPayload;
-    next();
-  });
-};
 
 routerP.post(
   '/profile',
