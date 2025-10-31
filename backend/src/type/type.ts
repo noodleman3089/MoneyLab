@@ -39,6 +39,7 @@ export interface DebtItem {
  * ข้อมูลสรุปของผู้ใช้ทั้งหมด ที่จะใช้เป็น Input
  */
 export interface UserFinancialInput {
+  userId: number; // <-- เพิ่มเข้ามา: ID ของผู้ใช้
   answers: SurveyAnswerRow[];
   main_income_amount: number;
   side_income_amount: number;
@@ -74,4 +75,25 @@ export interface InvestmentRecommendationTarget {
   investment_type: 'stock' | 'stockTH' | 'fund';
   investment_ref_id: number;
   recommended_allocation_percent: number;
+}
+
+/**
+ * หน้าตาของ "คำแนะนำการลงทุน" ที่จะส่งกลับไปให้ Client
+ */
+export interface FetchedRecommendation {
+  symbol: string;
+  type: 'stock' | 'stockTH' | 'fund';
+  allocation: number;
+}
+
+/**
+ * หน้าตาของข้อมูลเป้าหมาย (Goal) ที่ดึงมาจาก DB
+ */
+export interface GoalInfo {
+  goalId: number;
+  targetAmount: number;
+  contributionAmount: number;
+  frequency: 'monthly' | 'weekly' | 'daily' | 'one-time';
+  // เพิ่ม Property ที่เราจะคำนวณขึ้นมาเอง
+  calculatedDurationMonths: number; 
 }

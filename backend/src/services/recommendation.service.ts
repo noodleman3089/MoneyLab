@@ -9,6 +9,7 @@ import {
   SurveyAnswerRow,
   Asset,
   InvestmentRecommendationTarget,
+  GoalInfo,
 } from '../type/type'; // <-- ย้อนกลับ Path
 import { groupAnswers } from './risk-profile.service'; // นำเข้าฟังก์ชันจัดกลุ่มคำตอบ
 
@@ -61,7 +62,8 @@ export function getFinancialRecommendations(
   userInput: UserFinancialInput,
   riskProfile: RiskProfileResult,
   allAssetsFromDb: Asset[], // <-- 1. รับสินทรัพย์จริง
-  targetGoalId: number      // <-- 2. รับ Goal ID
+  targetGoalId: number,      // <-- 2. รับ Goal ID
+  goalInfo: GoalInfo        // <-- 3. รับข้อมูลเป้าหมายที่คำนวณแล้ว
 ): { generalAdvice: Recommendation[], investmentsToSave: InvestmentRecommendationTarget[] } { // <-- 3. เปลี่ยน Return type
 
   const recommendations: Recommendation[] = [];
@@ -122,7 +124,7 @@ export function getFinancialRecommendations(
   }
 
   // --- 4. คำแนะนำการลงทุน (ทำงานเสมอ) ---
-  const investmentResults = getInvestmentSuggestion(effectiveRiskProfile, surveyAnswers, allAssetsFromDb, targetGoalId);
+  const investmentResults = getInvestmentSuggestion(effectiveRiskProfile, surveyAnswers, allAssetsFromDb, targetGoalId, goalInfo);
   
   if (investmentResults.length > 0) {
     investmentsToSave.push(...investmentResults);
@@ -151,7 +153,8 @@ function getInvestmentSuggestion(
   riskProfile: RiskProfileResult,
   surveyAnswers: SurveyAnswerRow[],
   allAssets: Asset[],
-  targetGoalId: number
+  targetGoalId: number,
+  goalInfo: GoalInfo // <-- รับข้อมูลเป้าหมายเข้ามา
 ): InvestmentRecommendationTarget[] { // <-- คืนค่าเป็น Array ที่พร้อม Save
 
   // 1. ดึงความสนใจ (Interest): ดึงคำตอบข้อ 6
@@ -159,8 +162,20 @@ function getInvestmentSuggestion(
   const rawInterests = answers['6']; // Can be string, string[], or undefined
   const interestsArray = Array.isArray(rawInterests) ? rawInterests : (rawInterests ? [rawInterests] : []);
 
-  // 2. กรองขั้นที่ 1 (ตาม Risk)
-  const riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === riskProfile.profile);
+  // 2. กรองขั้นที่ 1 (ตาม Risk และ **ระยะเวลาเป้าหมาย**)
+  let riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === riskProfile.profile);
+
+  // --- กฎใหม่: ปรับการเลือกสินทรัพย์ตามระยะเวลา ---
+  if (goalInfo.calculatedDurationMonths <= 12) { // น้อยกว่าหรือเท่ากับ 1 ปี
+    // บังคับให้เลือกเฉพาะสินทรัพย์ความเสี่ยงต่ำสุดเท่านั้น
+    riskFilteredAssets = allAssets.filter(asset => asset.risk_profile === 'Conservative');
+  } else if (goalInfo.calculatedDurationMonths <= 36) { // 1-3 ปี
+    // ไม่อนุญาตให้มีสินทรัพย์เสี่ยงสูง
+    riskFilteredAssets = riskFilteredAssets.filter(asset => asset.risk_profile !== 'Aggressive');
+  }
+  // ถ้ามากกว่า 3 ปี (37+ เดือน) ก็ใช้สินทรัพย์ตาม Risk Profile ของผู้ใช้ได้เลย
+  // -----------------------------------------
+
 
   // 6. (ถ้าไม่มีสินทรัพย์): ถ้ากรองตาม Risk แล้วไม่เจออะไรเลย ให้ return []
   if (riskFilteredAssets.length === 0) {
@@ -175,12 +190,35 @@ function getInvestmentSuggestion(
     interestFilteredAssets = riskFilteredAssets;
   }
 
-  // 5. ตัดสินใจ (Rule): เลือกมาแค่ 1 ตัว (ตัวแรก)
-  const selectedAsset = interestFilteredAssets[0];
-  return [{
-    goal_id: targetGoalId,
-    investment_type: selectedAsset.type,
-    investment_ref_id: selectedAsset.id,
-    recommended_allocation_percent: 100.00
-  }];
+  // 5. ตัดสินใจ (Rule): ปรับปรุงใหม่
+  // 5.1 สุ่มลำดับสินทรัพย์ที่กรองมาได้ เพื่อไม่ให้ได้ตัวเดิมทุกครั้ง
+  const shuffledAssets = interestFilteredAssets.sort(() => 0.5 - Math.random());
+
+  // 5.2 เลือกสินทรัพย์มาสูงสุด 3 ตัว
+  const MAX_ASSETS_TO_RECOMMEND = 3;
+  const selectedAssets = shuffledAssets.slice(0, MAX_ASSETS_TO_RECOMMEND);
+
+  // 5.3 ถ้าไม่มีสินทรัพย์ที่เลือกได้เลย ให้คืนค่าว่าง
+  if (selectedAssets.length === 0) {
+    return [];
+  }
+
+  // 5.4 คำนวณสัดส่วนการลงทุน (แบ่งเท่าๆ กัน)
+  const allocationPercent = parseFloat((100 / selectedAssets.length).toFixed(2));
+
+  // 5.5 สร้างผลลัพธ์ที่พร้อมสำหรับบันทึกลง DB
+  const recommendations: InvestmentRecommendationTarget[] = selectedAssets.map((asset, index) => {
+    // จัดการเศษทศนิยมโดยปัดให้ตัวสุดท้ายเพื่อให้รวมกันได้ 100% พอดี
+    const isLast = index === selectedAssets.length - 1;
+    const finalAllocation = isLast ? 100 - (allocationPercent * (selectedAssets.length - 1)) : allocationPercent;
+
+    return {
+      goal_id: targetGoalId,
+      investment_type: asset.type,
+      investment_ref_id: asset.id,
+      recommended_allocation_percent: parseFloat(finalAllocation.toFixed(2)),
+    };
+  });
+
+  return recommendations;
 }

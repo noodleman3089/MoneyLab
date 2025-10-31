@@ -1,10 +1,14 @@
 
 import mysql from 'mysql2/promise';
 import 'dotenv/config';
-import { Asset, InvestmentRecommendationTarget } from '../type/type';
+import { Asset, InvestmentRecommendationTarget, SurveyAnswerRow, FetchedRecommendation, GoalInfo } from '../type/type';
 
 // --- 1. DATABASE CONFIGURATION ---
+// dbConfig จะถูกใช้เพื่อสร้าง Connection Pool และถูก Export ออกไปเผื่อการใช้งานอื่นๆ
+// สามารถเพิ่ม option อื่นๆ ของ pool ได้ที่นี่ เช่น connectionLimit
+// ดูเพิ่มเติม: https://github.com/sidorares/node-mysql2/blob/master/documentation/Extras.md#connection-options
 export const dbConfig = {
+  connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10', 10), // ดึงจาก .env หรือใช้ 10 เป็นค่าเริ่มต้น
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -12,8 +16,10 @@ export const dbConfig = {
   port: parseInt(process.env.DB_PORT || '3306', 10),
 };
 
-// --- 2. DATABASE HELPER FUNCTIONS ---
+// สร้าง Connection Pool และ Export ออกไป
+export const pool = mysql.createPool(dbConfig);
 
+// --- 2. DATABASE HELPER FUNCTIONS ---
 /**
  * Fetches all available assets from the database.
  */
@@ -83,4 +89,110 @@ export async function saveRecommendationsToDb(connection: mysql.Connection, reco
   ]);
 
   await connection.query(sql, [values]);
+}
+
+/**
+ * Fetches all survey answers for a specific user from the database.
+ * @param connection - The database connection object.
+ * @param userId - The ID of the user whose answers are to be fetched.
+ * @returns A promise that resolves to an array of SurveyAnswerRow.
+ */
+export async function fetchUserAnswers(connection: mysql.Connection, userId: number): Promise<SurveyAnswerRow[]> {
+  const sql = `
+    SELECT question_id, answer_value 
+    FROM survey_answer 
+    WHERE user_id = ?;
+  `;
+
+  const [rows] = await connection.execute(sql, [userId]);
+  return rows as SurveyAnswerRow[];
+}
+
+/**
+ * Fetches saved investment recommendations for a specific goal, joining with asset tables to get details.
+ * @param connection - The database connection object.
+ * @param goalId - The ID of the goal whose recommendations are to be fetched.
+ * @returns A promise that resolves to an array of FetchedRecommendation.
+ */
+export async function fetchRecommendationsByGoalId(connection: mysql.Connection, goalId: number): Promise<FetchedRecommendation[]> {
+  const sql = `
+    -- US Stocks
+    SELECT 
+        s.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN stocks s ON ir.investment_ref_id = s.stock_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'stock'
+
+    UNION ALL
+
+    -- Thai Stocks
+    SELECT 
+        sth.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN stocksTH sth ON ir.investment_ref_id = sth.stock_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'stockTH'
+
+    UNION ALL
+
+    -- Funds
+    SELECT 
+        f.symbol, 
+        ir.investment_type, 
+        ir.recommended_allocation_percent AS allocation
+    FROM investment_recommendation ir
+    JOIN funds f ON ir.investment_ref_id = f.fund_id
+    WHERE ir.goal_id = ? AND ir.investment_type = 'fund';
+  `;
+
+  const [rows] = await connection.execute(sql, [goalId, goalId, goalId]);
+  return rows as FetchedRecommendation[];
+}
+
+/**
+ * Fetches goal information and calculates the approximate duration.
+ * @param connection - The database connection object.
+ * @param goalId - The ID of the goal to fetch.
+ * @returns A promise that resolves to GoalInfo object or null if not found.
+ */
+export async function fetchAndCalculateGoalInfo(connection: mysql.Connection, goalId: number): Promise<GoalInfo | null> {
+  const sql = `
+    SELECT 
+      goal_id, 
+      target_amount, 
+      contribution_amount, 
+      frequency 
+    FROM saving_goals 
+    WHERE goal_id = ?;
+  `;
+
+  const [rows] = await connection.execute(sql, [goalId]);
+  const goalData = (rows as any[])[0];
+
+  if (!goalData) {
+    return null;
+  }
+
+  let calculatedDurationMonths = 0;
+  const { target_amount, contribution_amount, frequency } = goalData;
+
+  if (contribution_amount > 0) {
+    const contributionsPerMonth = 
+        frequency === 'daily' ? contribution_amount * 30
+      : frequency === 'weekly' ? contribution_amount * 4
+      : contribution_amount; // monthly or one-time
+
+    calculatedDurationMonths = Math.ceil(target_amount / contributionsPerMonth);
+  }
+
+  return {
+    goalId: goalData.goal_id,
+    targetAmount: parseFloat(target_amount),
+    contributionAmount: parseFloat(contribution_amount),
+    frequency: frequency,
+    calculatedDurationMonths: calculatedDurationMonths,
+  };
 }
