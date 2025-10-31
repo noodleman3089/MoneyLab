@@ -3,7 +3,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'UserProfilePage.dart';
 import 'GoalPageState.dart';
-/*import 'Additional.dart';*/
+import 'Additional.dart';
+import 'DailyManagement.dart';
+import 'SpendingSummary.dart';
 
 void main() {
   runApp(const MyApp());
@@ -38,10 +40,10 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _pages = [
     const GoalPage(),
-    const SummaryPage(),
+    const SpendingSummaryPage(),
     const DailyManagementPage(),
     const UserProfilePage(),
-    /*const AdditionalPage(),*/
+    const AdditionalPage(),
   ];
 
   @override
@@ -73,7 +75,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 65,
+      height: 80,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -208,26 +210,6 @@ class SummaryPage extends StatelessWidget {
       body: const Center(
         child: Text(
           'หน้าสรุปรายรับ',
-          style: TextStyle(fontSize: 24),
-        ),
-      ),
-    );
-  }
-}
-
-class DailyManagementPage extends StatelessWidget {
-  const DailyManagementPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('จัดการรายวัน'),
-        backgroundColor: const Color(0xFF1a7f7f),
-      ),
-      body: const Center(
-        child: Text(
-          'หน้าจัดการรายวัน',
           style: TextStyle(fontSize: 24),
         ),
       ),

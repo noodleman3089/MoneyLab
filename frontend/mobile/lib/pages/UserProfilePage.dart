@@ -384,23 +384,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
           const SizedBox(height: 10),
           _buildActionButton(
-            icon: Icons.help_outline,
-            label: 'ช่วยเหลือ',
-            color: Colors.blue.shade600,
-            onTap: () {
-              // TODO: นำไปหน้าช่วยเหลือ
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'ฟีเจอร์ช่วยเหลือ (เร็วๆ นี้)',
-                    style: GoogleFonts.beVietnamPro(),
-                  ),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 10),
-          _buildActionButton(
             icon: Icons.logout,
             label: 'ออกจากระบบ',
             color: Colors.red.shade600,

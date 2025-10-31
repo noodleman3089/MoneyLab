@@ -103,12 +103,6 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // ฟังก์ชันสำหรับจัดการการเข้าสู่ระบบด้วย Google (ยังไม่ได้ implement)
-  void _handleGoogleSignIn() {
-    print('Google sign-in clicked');
-    // TODO: Implement Google sign-in
-  }
-
   // ฟังก์ชันสำหรับย้อนกลับ
   void _handleBack() {
     Navigator.pop(context);
@@ -594,52 +588,6 @@ class _RegisterPageState extends State<RegisterPage> {
 
                           const SizedBox(height: 16),
 
-                          // Or Divider
-                          Text(
-                            'or',
-                            style: GoogleFonts.beVietnamPro(
-                              color: const Color(0xFF223248),
-                              fontSize: 16,
-                            ),
-                          ),
-                          
-                          const SizedBox(height: 16),
-
-                          // Google Sign In Button
-                          SizedBox(
-                            width: 155,
-                            height: 40,
-                            child: ElevatedButton.icon(
-                              onPressed: _handleGoogleSignIn,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black87,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                elevation: 4,
-                              ),
-                              icon: Image.asset(
-                                'assets/google_icon.png',
-                                height: 20,
-                                width: 20,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.g_mobiledata,
-                                    size: 24,
-                                    color: Colors.blue,
-                                  );
-                                },
-                              ),
-                              label: Text(
-                                'Google',
-                                style: GoogleFonts.beVietnamPro(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),

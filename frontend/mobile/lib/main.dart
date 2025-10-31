@@ -7,6 +7,7 @@ import 'pages/restpassword.dart';
 import 'pages/Navbar.dart' as navbar;
 import 'pages/Additional.dart';
 import 'pages/UserProfilePage.dart' as userprofile;
+import 'pages/Questionnaire.dart';
 
 void main() {
   runApp(const MyApp());
@@ -92,7 +93,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: const Color(0xFF223248),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   Text(
                     'Welcome to MoneyLab',
                     style: GoogleFonts.beVietnamPro(
@@ -100,7 +101,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       color: const Color(0xFF223248),
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 48),
 
                   // Login Button
                   SizedBox(
@@ -140,11 +141,11 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF4FB7B3),
+                        foregroundColor: const Color(0xFF008170),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                           side: const BorderSide(
-                            color: Color(0xFF4FB7B3),
+                            color: Color(0xFF008170),
                             width: 2,
                           ),
                         ),
@@ -155,7 +156,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: const Color(0xFF4FB7B3),
+                          color: const Color(0xFF008170),
                         ),
                       ),
                     ),
@@ -194,6 +195,42 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                     ),
                   ),
+
+                 const SizedBox(height: 24),
+
+                  // Test Button to Questionnaire Page
+                  SizedBox(
+                    width: 200,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const QuestionnairePage(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        textAlign: TextAlign.center, 
+                        'Test Questionnaire Page',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
                 ],
               ),
             ),
