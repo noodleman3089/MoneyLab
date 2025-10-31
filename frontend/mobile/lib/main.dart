@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'pages/login.dart';
 import 'pages/register.dart';
+import 'pages/forgetpassword.dart';
+import 'pages/restpassword.dart';
+import 'pages/Navbar.dart' as navbar;
+import 'pages/Additional.dart';
+import 'pages/UserProfilePage.dart' as userprofile;
+import 'pages/Questionnaire.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,7 +16,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -24,6 +30,27 @@ class MyApp extends StatelessWidget {
         '/': (context) => const MyHomePage(title: 'MoneyLab'),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
+        '/forgetpassword': (context) => const ForgotPasswordScreen(),
+      },
+      // ใช้ onGenerateRoute เพื่อจัดการ route ที่ต้องการ arguments
+      onGenerateRoute: (settings) {
+        if (settings.name == '/restpassword') {
+          // ดึง arguments ที่ส่งมา
+          final args = settings.arguments as Map<String, dynamic>?;
+          
+          // ตรวจสอบว่ามี token หรือไม่
+          if (args != null && args['token'] != null) {
+            return MaterialPageRoute(
+              builder: (context) => ResetPasswordScreen(token: args['token']),
+            );
+          }
+          
+          // ถ้าไม่มี token ให้กลับไปหน้า login
+          return MaterialPageRoute(
+            builder: (context) => const LoginPage(),
+          );
+        }
+        return null;
       },
     );
   }
@@ -31,15 +58,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -67,23 +85,23 @@ class _MyHomePageState extends State<MyHomePage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo or App Title
-                  const Text(
+                  Text(
                     'MoneyLab',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 56,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF223248),
+                      color: const Color(0xFF223248),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
+                  const SizedBox(height: 24),
+                  Text(
                     'Welcome to MoneyLab',
-                    style: TextStyle(
+                    style: GoogleFonts.beVietnamPro(
                       fontSize: 18,
-                      color: Color(0xFF223248),
+                      color: const Color(0xFF223248),
                     ),
                   ),
-                  const SizedBox(height: 80),
+                  const SizedBox(height: 48),
 
                   // Login Button
                   SizedBox(
@@ -101,11 +119,12 @@ class _MyHomePageState extends State<MyHomePage> {
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Login',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -122,25 +141,96 @@ class _MyHomePageState extends State<MyHomePage> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF4FB7B3),
+                        foregroundColor: const Color(0xFF008170),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                           side: const BorderSide(
-                            color: Color(0xFF4FB7B3),
+                            color: Color(0xFF008170),
                             width: 2,
                           ),
                         ),
                         elevation: 4,
                       ),
-                      child: const Text(
+                      child: Text(
                         'Sign Up',
-                        style: TextStyle(
+                        style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
+                          color: const Color(0xFF008170),
                         ),
                       ),
                     ),
                   ),
+
+                  const SizedBox(height: 24),
+
+                  // Test Button to Home Page
+                  SizedBox(
+                    width: 200,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const navbar.MainScreen(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        'Test Home Page',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                 const SizedBox(height: 24),
+
+                  // Test Button to Questionnaire Page
+                  SizedBox(
+                    width: 200,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const QuestionnairePage(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFB74D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                        elevation: 4,
+                      ),
+                      child: Text(
+                        textAlign: TextAlign.center, 
+                        'Test Questionnaire Page',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+
                 ],
               ),
             ),

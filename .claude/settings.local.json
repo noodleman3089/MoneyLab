@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree \"c:\\Users\\Time\\Documents\\MoneyLab\\frontend\\web\\src\" -L 4 -I \"node_modules|.next\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

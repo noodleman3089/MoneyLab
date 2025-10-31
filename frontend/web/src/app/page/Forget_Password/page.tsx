@@ -16,7 +16,7 @@ export default function ForgetPasswordPage() {
     e.preventDefault();
 
     try {
-      const response = await axios.post("/api/forget-password", { email });
+      const response = await axios.post("http://localhost:4000/api/forget-password", { email });
       console.log(response.data);
 
     } catch (error) {
@@ -30,7 +30,7 @@ export default function ForgetPasswordPage() {
   }
 
   const handleNextPage = () => {
-    window.location.href = "/page/Reset_Password";
+    window.location.href = "/page/Verify_Token"; //เอาไว้ทดสอบการเปลี่ยนหน้า
   }
 
   return (
