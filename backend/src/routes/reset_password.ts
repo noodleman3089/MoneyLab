@@ -44,7 +44,7 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
     );
 
     // ✅ สร้างลิงก์ Reset Password หน้าเว็บ
-    const resetLink = `https://yourfrontend.com/reset-password?token=${resetToken}`;
+    const resetLink = `https://yourfrontend.com/reset-password?token=${resetToken}`; // เปลี่ยนเป็น URL หน้ารีเซ็ตรหัสผ่านจริง
 
     // ส่งอีเมล
     await sendEmail(

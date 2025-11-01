@@ -5,6 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { query } from '../index';
 import { authenticateToken } from '../middlewares/authMiddleware';
+import { sendEmail } from '../sendEmail/sendEmail';
 
 const routerOCR = express.Router();
 
@@ -217,6 +218,83 @@ routerOCR.post(
               req.file ? `uploads/${req.file.filename}` : null,
             ]
           );
+
+          if (transactionType === 'expense') {
+            const today = new Date().toISOString().slice(0, 10);
+
+            // ✅ ดึง daily_budget ของวันนี้
+            const [budget]: any = await query(
+              `SELECT budget_id, target_spend, 
+                  (SELECT COALESCE(SUM(amount),0) 
+                  FROM transactions 
+                  WHERE user_id = ? AND type = 'expense' 
+                  AND DATE(transaction_date) = ?) AS total_spent
+              FROM daily_budget 
+              WHERE user_id = ? AND budget_date = ? 
+              LIMIT 1`,
+              [userId, today, userId, today]
+            );
+
+            if (budget) {
+              const {budget_id} = budget;
+              const target_spend = parseFloat(budget.target_spend ?? 0);
+              const total_spent = parseFloat(budget.total_spent ?? 0);
+              const percentUsed = target_spend > 0 ? (total_spent / target_spend) * 100 : 0;
+              
+              // ✅ ตรวจว่าเพิ่งข้าม 50% หรือ 100%
+              let shouldNotify = false;
+              let notifyType: 'warning' | 'error' | null = null;
+              let title = '';
+              let message = '';
+
+              if (percentUsed >= 100) {
+                shouldNotify = true;
+                notifyType = 'error';
+                title = 'งบวันนี้หมดแล้ว!';
+                message = `คุณใช้จ่ายครบงบประจำวันที่ ${today} แล้ว (${total_spent.toFixed(2)} / ${target_spend.toFixed(2)} บาท)`;
+              } else if (percentUsed >= 50) {
+                shouldNotify = true;
+                notifyType = 'warning';
+                title = 'ใกล้เต็มงบวันนี้แล้ว!';
+                message = `คุณใช้จ่ายไปแล้ว ${percentUsed.toFixed(0)}% ของงบวันนี้ (${total_spent.toFixed(2)} / ${target_spend.toFixed(2)} บาท)`;
+              }
+
+              if (shouldNotify && notifyType) {
+                // ✅ บันทึก notification ลง DB
+                await query(
+                  `INSERT INTO notifications 
+                  (user_id, type, title, message, reference_type, reference_id)
+                  VALUES (?, ?, ?, ?, 'daily_budget', ?)`,
+                  [userId, notifyType, title, message, budget_id]
+                );
+
+                // ✅ ดึงอีเมลผู้ใช้
+                const [userInfo]: any = await query(
+                  `SELECT email, username FROM users WHERE user_id = ? LIMIT 1`,
+                  [userId]
+                );
+
+                if (userInfo?.email) {
+                  await sendEmail(
+                    userInfo.email,
+                    title,
+                    message,
+                    `
+                      <div style="font-family:sans-serif;line-height:1.6">
+                        <h3>${title}</h3>
+                        <p>สวัสดีคุณ ${userInfo.username || ''},</p>
+                        <p>${message}</p>
+                        <hr/>
+                        <small>ระบบแจ้งเตือนจาก MoneyLab</small>
+                      </div>
+                    `
+                  );
+                  console.log(`📧 Budget alert sent to ${userInfo.email}`);
+                }
+              }
+            }
+          }
+
 
           res.json({
             status: true,

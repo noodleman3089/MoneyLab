@@ -14,9 +14,9 @@ routerG.post(
   [
     body('goal_name').isString().notEmpty(),
     body('target_amount').isFloat({ gt: 0 }),
-    body('monthly_contribution').isFloat({ gt: 0 }),
-    body('duration_months').isInt({ gt: 0 }),
+    body('contribution_amount').isFloat({ gt: 0 }), // 🔄 เปลี่ยนชื่อ field
     body('frequency').isIn(['daily', 'weekly', 'monthly', 'one-time']),
+    body('start_date').optional().isDate().withMessage('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)'),
   ],
   async (req: Request, res: Response) => {
     const errors = validationResult(req);
@@ -28,10 +28,10 @@ routerG.post(
     const {
       goal_name,
       target_amount,
-      monthly_contribution,
-      duration_months,
+      contribution_amount,
       frequency,
       start_date,
+      next_deduction_date,
     } = req.body;
 
     try {
@@ -48,38 +48,47 @@ routerG.post(
         });
       }
 
-            let walletId: number | null = null;
+      // ตรวจสอบหรือสร้าง wallet
+      let walletId: number | null = null;
       const walletRows = await query(
         'SELECT wallet_id FROM wallet WHERE user_id = ? LIMIT 1',
         [userId]
       );
 
       if (walletRows.length === 0) {
-        // 🆕 ถ้ายังไม่มี wallet → สร้างใหม่ชื่อ Main Wallet
         const createWallet = await query(
           'INSERT INTO wallet (user_id, wallet_name, currency, balance) VALUES (?, ?, ?, 0)',
           [userId, 'Main Wallet', 'THB']
         );
         walletId = createWallet.insertId;
-        console.log(`🆕 สร้าง wallet ใหม่สำหรับ user_id=${userId} → wallet_id=${walletId}`);
       } else {
         walletId = walletRows[0].wallet_id;
       }
 
-      // เพิ่มเป้าหมายใหม่
+      const dateToUse = start_date || new Date().toISOString().slice(0, 10);
+
+      let nextDate: Date | null = null;
+      const now = new Date();
+      if (frequency === 'daily') nextDate = new Date(now.setDate(now.getDate() + 1));
+      else if (frequency === 'weekly') nextDate = new Date(now.setDate(now.getDate() + 7));
+      else if (frequency === 'monthly') nextDate = new Date(now.setMonth(now.getMonth() + 1));
+      else if (frequency === 'one-time') nextDate = null;
+
+      // 🟢 เพิ่มเป้าหมายใหม่ (ตาม schema ใหม่)
       await query(
         `INSERT INTO saving_goals 
-        (user_id, wallet_id, goal_name, target_amount, monthly_contribution, duration_months, frequency, start_date)
+        (user_id, wallet_id, goal_name, target_amount, contribution_amount, frequency, start_date, next_deduction_date)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
           walletId,
           goal_name,
           target_amount,
-          monthly_contribution,
-          duration_months,
+          contribution_amount,
           frequency,
           start_date || new Date(),
+          nextDate,
+          dateToUse,
         ]
       );
 
@@ -99,8 +108,8 @@ routerG.get('/', authenticateToken, async (req: Request, res: Response) => {
 
   try {
     const goals = await query(
-      `SELECT goal_id, goal_name, target_amount, current_amount, monthly_contribution,
-              duration_months, frequency, status, start_date,
+      `SELECT goal_id, goal_name, target_amount, current_amount, contribution_amount,
+              frequency, status, start_date, next_deduction_date,
               ROUND((current_amount / target_amount) * 100, 2) AS progress_percent
        FROM saving_goals WHERE user_id = ? ORDER BY created_at DESC`,
       [userId]
@@ -147,9 +156,9 @@ routerG.put(
   [
     body('goal_name').optional().isString(),
     body('target_amount').optional().isFloat({ gt: 0 }),
-    body('monthly_contribution').optional().isFloat({ gt: 0 }),
-    body('duration_months').optional().isInt({ gt: 0 }),
+    body('contribution_amount').optional().isFloat({ gt: 0 }),
     body('frequency').optional().isIn(['daily', 'weekly', 'monthly', 'one-time']),
+    body('next_deduction_date').optional().isISO8601().toDate(),
   ],
   async (req: Request, res: Response) => {
     const userId = (req as any).user.user_id;
@@ -161,7 +170,7 @@ routerG.put(
       .join(', ');
     const values = [...Object.values(fields), goalId, userId];
 
-    if (!setClause) {
+    if (Object.keys(fields).length === 0) {
       return res.status(400).json({ status: false, message: 'ไม่มีข้อมูลที่จะแก้ไข' });
     }
 

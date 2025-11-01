@@ -5,7 +5,8 @@ import jwt from 'jsonwebtoken';
 import { query } from '../index';
 
 const controllers_L = express();
-const SECRET_KEY = process.env.SECRET_KEY || '1234'; 
+const SECRET_KEY = process.env.SECRET_KEY || '1234';
+const JWT_SECRET = process.env.JWT_SECRET || '1234';
 
 // Login 
 controllers_L.post('/login',
@@ -42,7 +43,7 @@ controllers_L.post('/login',
 
     const token = jwt.sign(
       { user_id: user.user_id, username: user.username, role: user.role },
-      SECRET_KEY,
+      JWT_SECRET,
       { expiresIn: '1h' }
     );
 
