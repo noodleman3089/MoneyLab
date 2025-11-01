@@ -1,11 +1,13 @@
-FROM mysql:8
+FROM mysql:8.4.0
 
 
-ENV MYSQL_ROOT_PASSWORD=0970123354
+ENV MYSQL_ROOT_PASSWORD=Time3672
 
 ENV MYSQL_DATABASE=moneylab
 
 
 COPY ./moneylab_newV.sql /docker-entrypoint-initdb.d/
+
+
 
 EXPOSE 3306

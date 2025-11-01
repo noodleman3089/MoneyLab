@@ -32,7 +32,8 @@ RUN echo '#!/bin/sh' > /wait-for.sh && \
  chmod +x /wait-for.sh
 
 # Expose the API port
-EXPOSE 4000
+EXPOSE 5000
+
 
 # Start the server with wait-for script
 ENTRYPOINT ["/wait-for.sh", "mysql"]

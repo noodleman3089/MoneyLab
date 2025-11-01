@@ -18,7 +18,7 @@ export async function sendEmail(
     });
 
     const info = await transporter.sendMail({
-      from: `"My App" <${process.env.EMAIL_USER}>`, // ชื่อผู้ส่ง
+      from: `"Money Lab" <${process.env.EMAIL_USER}>`, // ชื่อผู้ส่ง
       to,
       subject,
       text,

@@ -1,52 +1,45 @@
 version: "3.9"
 
 services:
- mysql:
-  build:
-   context: ./backend/database
-   dockerfile: dockerfile
-  image: jirawatrmutto/moneylab-mysql:latest
-  ports:
-  # เปลี่ยนพอร์ตจาก 3306 เป็น 3307 เพื่อหลีกเลี่ยงการชนกับ MySQL ที่อาจรันอยู่บนโฮสต์ เครื่อง
-   - "3307:3306"
-  volumes:
-   - db_data:/var/lib/mysql
+  mysql:
+    build:
+      context: ./backend/database
+    image: jirawatrmutto/moneylab-mysql:latest
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
 
- express:
-  build:
-   context: ./backend
-   dockerfile: dockerfile
-  image: jirawatrmutto/moneylab-express:latest
-  
-  #มันจะรอให้บริการ mysql พร้อมก่อนที่จะเริ่มทำงาน  
-  depends_on:
-   - mysql
-  ports:
-   - "4000:4000"
+  express:
+    build:
+      context: ./backend
+      
+    image: jirawatrmutto/moneylab-express:latest
+    depends_on:
+      - mysql
+    ports:
+      - "5000:5000"
 
- flask:
-  build:
-   context: ./backend/model/ocr_module
-  image: jirawatrmutto/moneylab-flask:latest
-  depends_on:
-   - mysql
-  ports:
-   - "8000:8000"
+  flask:
+    build:
+      context: ./backend/model/ocr_module
+      
+    image: jirawatrmutto/moneylab-flask:latest
+    depends_on:
+      - mysql
+    ports:
+      - "8000:8000"
 
-
-# web:
-  #build:
-   #context: ./frontend/web
-   #dockerfile: dockerfile
-  #image: moneylab/moneylabe-web:latest
-  #depends_on เพื่อให้แน่ใจว่าเซอร์วิส express จะเริ่มทำงานก่อนที่จะเริ่มเซอร์วิส web
-  #depends_on:
-  # - express
- # ports:
- #  - "80:80"
-
- 
+  web:
+    build:
+      context: ./frontend/web
+    image:  jirawatrmutto/moneylabe-web:latest
+    depends_on:
+      - express
+      - flask
+     # - rule
+    ports:
+      - "80:80"
 
 volumes:
- db_data:
-
+  db_data:

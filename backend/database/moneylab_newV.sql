@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS otp_verification (
   password_hash VARCHAR(255) NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  verified TINYINT(1) DEFAULT 0
+  verified TINYINT DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
@@ -389,7 +389,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   message TEXT NULL,
   reference_type VARCHAR(100) NULL, -- e.g. 'transaction','goal','investment'
   reference_id VARCHAR(255) NULL,
-  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  is_read TINYINT NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   read_at TIMESTAMP NULL,
 
