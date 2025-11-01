@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'pages/login.dart';
-import 'pages/register.dart';
+import 'pages/authentication/login.dart';
+import 'pages/authentication/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
-import 'pages/Navbar.dart' as navbar;
-import 'pages/Additional.dart';
-import 'pages/UserProfilePage.dart' as userprofile;
+import 'pages/components/Navbar.dart' as navbar;
 import 'pages/Questionnaire.dart';
+// import 'pages/Additional.dart';
+// import 'pages/UserProfilePage.dart' as userprofile;
 
 void main() {
   runApp(const MyApp());
