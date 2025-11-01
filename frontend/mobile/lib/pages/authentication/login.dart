@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
+// ไปยังหน้า MainScreen หลังล็อกอินสำเร็จ
+import '../components/Navbar.dart' as navbar;
+
 // ⭐️ 1. (แก้ไข) Import service ที่เราสร้างขึ้นมา
-import '/services/auth_service.dart'; // <-- (ถ้าไฟล์อยู่คนละโฟลเดอร์ ให้แก้ path)
+import '../../services/authe_service.dart'; // <-- (ถ้าไฟล์อยู่คนละโฟลเดอร์ ให้แก้ path)
 
 // 2. Creating and Exporting a Widget
 class LoginPage extends StatefulWidget {
@@ -23,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
 
   // ⭐️ 2. (แก้ไข) สร้าง instance ของ service
-  final AuthService _authService = AuthService();
+  final AutheService _authService = AutheService();
 
   @override
   void dispose() {
@@ -60,7 +63,10 @@ class _LoginPageState extends State<LoginPage> {
       // ถ้าเข้าสู่ระบบสำเร็จ (ส่วนนี้เหมือนเดิม)
       if (result['status'] == true) {
         // ... (จัดการเก็บ token) ...
-        Navigator.pushReplacementNamed(context, '/');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
+        ); // เปลี่ยนหน้าไปที่ MainScreen
       }
     } catch (error) {
       // ⭐️ (แก้ไข) จัดการ Error ที่ service โยนมา

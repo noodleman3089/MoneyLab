@@ -1,8 +1,8 @@
 // 1. Importing Dependencies
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
+import '../../services/authe_service.dart';
+import 'verifyotp.dart';
 
 // 2. Creating and Exporting a Widget
 class RegisterPage extends StatefulWidget {
@@ -22,6 +22,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   bool _acceptTerms = false;
   bool _isLoading = false;
+  final AutheService _authService = AutheService();
 
   @override
   void dispose() {
@@ -42,8 +43,11 @@ class _RegisterPageState extends State<RegisterPage> {
     // ตรวจสอบว่ากดติ๊กถูกที่ Terms and Conditions หรือยัง
     if (!_acceptTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว'),
+        SnackBar(
+          content: Text(
+            'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว',
+            style: GoogleFonts.beVietnamPro(),
+          ),
         ),
       );
       return;
@@ -52,8 +56,11 @@ class _RegisterPageState extends State<RegisterPage> {
     // ตรวจสอบว่า password ตรงกับ confirmPassword หรือไม่
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง'),
+        SnackBar(
+          content: Text(
+            'รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง',
+            style: GoogleFonts.beVietnamPro(),
+          ),
         ),
       );
       return;
@@ -64,35 +71,51 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:4000/api/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'username': _usernameController.text,
-          'password': _passwordController.text,
-          'confirmPassword': _confirmPasswordController.text,
-          'email': _emailController.text,
-          'phone_number': _phoneNumberController.text,
-        }),
+      // เรียกใช้ service เพื่อลงทะเบียนและส่ง OTP
+      final result = await _authService.register(
+        username: _usernameController.text,
+        password: _passwordController.text,
+        confirmPassword: _confirmPasswordController.text,
+        email: _emailController.text,
+        phoneNumber: _phoneNumberController.text.isEmpty ? null : _phoneNumberController.text,
       );
-
-      final result = jsonDecode(response.body);
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Registration response')),
+        SnackBar(
+          content: Text(
+            result['message'] ?? 'OTP ถูกส่งไปยังอีเมลของคุณ',
+            style: GoogleFonts.beVietnamPro(),
+          ),
+          backgroundColor: result['status'] == true
+              ? const Color(0xFF4FB7B3)
+              : Colors.red,
+        ),
       );
 
+      // ถ้าส่ง OTP สำเร็จ ให้ไปหน้า VerifyOTP
       if (result['status'] == true) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VerifyOtpPage(
+              email: _emailController.text,
+            ),
+          ),
+        );
       }
     } catch (error) {
       if (!mounted) return;
 
-      print('Registration error: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration failed. Please try again.')),
+        SnackBar(
+          content: Text(
+            error.toString().replaceFirst("Exception: ", ""),
+            style: GoogleFonts.beVietnamPro(),
+          ),
+          backgroundColor: Colors.red,
+        ),
       );
     } finally {
       if (mounted) {
