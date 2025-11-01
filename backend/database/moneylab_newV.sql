@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
- ========================
+-- ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- ========================
 CREATE TABLE IF NOT EXISTS `log` (
   log_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   actor_id BIGINT UNSIGNED NULL, -- who caused action (user/admin/system)
   actor_type ENUM('user','admin','system','api') NOT NULL DEFAULT 'user',
   table_name VARCHAR(128) NULL,

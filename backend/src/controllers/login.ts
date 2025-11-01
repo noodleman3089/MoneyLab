@@ -3,10 +3,10 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../index';
+import { logActivity } from '../services/log.service';
 
 const controllers_L = express();
-const SECRET_KEY = process.env.SECRET_KEY || '1234';
-const JWT_SECRET = process.env.JWT_SECRET || '1234';
+const SECRET_KEY = process.env.SECRET_KEY;
 
 // Login 
 controllers_L.post('/login',
@@ -32,18 +32,38 @@ controllers_L.post('/login',
     }
 
     const user = users[0];
-
-    // ใช้ password_hash ตาม table
-    const isPasswordValid = bcrypt.compareSync(password, user.password_hash);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    
     if (!isPasswordValid) {
+      await logActivity({
+        user_id: user.user_id, // User ที่พยายาม Login
+        actor_id: user.user_id,
+        actor_type: user.role, // 'user' หรือ 'admin'
+        action: 'LOGIN_FAIL',
+        table_name: 'users',
+        record_id: user.user_id,
+        description: `Failed login attempt for ${user.username}.`,
+        req: req // 👈 ส่ง req object ไปด้วย
+      });
       return res.status(401).send({ message: 'Invalid password', status: false });
     }
 
     await query('UPDATE users SET last_login_at = NOW() WHERE user_id = ?',[user.user_id]);
 
+    await logActivity({
+      user_id: user.user_id,
+      actor_id: user.user_id,
+      actor_type: user.role,
+      action: 'LOGIN_SUCCESS',
+      table_name: 'users',
+      record_id: user.user_id,
+      description: `User ${user.username} logged in.`,
+      req: req
+    });
+
     const token = jwt.sign(
       { user_id: user.user_id, username: user.username, role: user.role },
-      JWT_SECRET,
+      SECRET_KEY!,
       { expiresIn: '1h' }
     );
 
@@ -56,7 +76,16 @@ controllers_L.post('/login',
       status: true
     });
 
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: -1, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
+        actor_id: -1,
+        actor_type: 'system',
+        action: 'LOGIN_EXCEPTION',
+        description: `Login process failed with error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack } // เก็บ stack trace
+      });
     next(err);
   }
 });

@@ -22,6 +22,26 @@ import AdminControllers from './controllers/admin';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
+const REQUIRED_ENV_VARS = [
+  'DB_HOST',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
+  'PORT',
+  'SECRET_KEY'
+];
+
+const missingVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error(`FATAL ERROR: Missing required environment variables:`);
+  console.error(missingVars.join(', '));
+  console.error("Please check your .env file.");
+  process.exit(1); 
+}
+
+console.log('✅ All required environment variables are set.');
+
 console.log('ENV:', {
   DB_USER: process.env.DB_USER,
   DB_PASSWORD: process.env.DB_PASSWORD,
@@ -29,7 +49,7 @@ console.log('ENV:', {
 });
 
 const app = express();
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -37,20 +57,17 @@ app.use(cors());
 
 const dbTimezone = process.env.DB_TIMEZONE || '+07:00';
 // MySQL Connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST ?? '',
   user: process.env.DB_USER ?? '',
   password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME ?? '',
   port: Number(process.env.DB_PORT) || 3306,
   timezone: dbTimezone,
-});
-db.connect(err => {
-  if (err) {
-    console.error('Database connection failed:', err.message);
-    process.exit(1);
-  }
-  console.log('Database connected successfully');
+
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 export function query(sql: string, params: any[] = []): Promise<any> {
