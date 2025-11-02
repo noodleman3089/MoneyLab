@@ -72,6 +72,14 @@ controllers_L.post('/login',
       { expiresIn: '1h' }
     );
 
+    // --- ✨ [THE FIX] ตรวจสอบว่าผู้ใช้เคยทำแบบสอบถามหรือยัง ---
+    const [surveyCheck] = await query(
+      'SELECT EXISTS(SELECT 1 FROM survey_answer WHERE user_id = ?) AS has_answered',
+      [user.user_id]
+    );
+    const surveyCompleted = surveyCheck.has_answered === 1;
+    // ----------------------------------------------------
+
     // 👈 5. [THE FIX] ส่งข้อมูลกลับในรูปแบบที่ Frontend ต้องการ
     res.json({
       status: true,
@@ -80,7 +88,8 @@ controllers_L.post('/login',
       user: { // <-- สร้าง object user ที่ซ้อนอยู่ข้างใน
         user_id: user.user_id,
         username: user.username,
-        role: user.role // <-- ส่ง role กลับไปด้วย
+        role: user.role, // <-- ส่ง role กลับไปด้วย
+        survey_completed: surveyCompleted // 👈 ส่งสถานะการทำแบบสอบถามกลับไปด้วย
       }
     });
 

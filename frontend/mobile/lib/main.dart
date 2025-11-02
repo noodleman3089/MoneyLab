@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/pages/Questionnaire.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'pages/authentication/login.dart';
 import 'pages/authentication/register.dart';
@@ -30,6 +31,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgetpassword': (context) => const ForgotPasswordScreen(),
+        '/questionnaire': (context) => const QuestionnairePage(),
       },
       // ใช้ onGenerateRoute เพื่อจัดการ route ที่ต้องการ arguments
       onGenerateRoute: (settings) {

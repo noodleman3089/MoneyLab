@@ -26,9 +26,14 @@ class ApiConfig {
 
   // --- Profile Endpoint ---
   static String get profileUrl => '$apiUrl/profile';
+  static String get addDebtUrl => '$apiUrl/profile/debts'; // 👈 เพิ่มบรรทัดนี้
 
   // --- Survey Endpoint ---
   static String get surveyQuestionsUrl => '$apiUrl/survey/questions';
+  static String get submitSurveyUrl => '$apiUrl/survey/submit'; // 👈 เพิ่มบรรทัดนี้
+
+  // --- Lookup Data Endpoint ---
+  static String get lookupsUrl => '$apiUrl/lookups';
 
   // TODO: เพิ่ม Endpoints อื่นๆ ที่นี่ เช่น transactions, goals, etc.
 }

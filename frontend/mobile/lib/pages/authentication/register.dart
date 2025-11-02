@@ -477,9 +477,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             hintText: 'Phone Numbers',
                             keyboardType: TextInputType.phone,
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter phone number';
-                              }
+                              // เบอร์โทรศัพท์ไม่บังคับกรอก จึงไม่ต้องมี validator
                               return null;
                             },
                           ),

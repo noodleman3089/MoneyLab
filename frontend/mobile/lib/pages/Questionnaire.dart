@@ -77,15 +77,10 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
 
   // ส่งแบบสอบถามไปยัง API
   Future<void> handleSubmit() async {
+    // 👈 3. [REFACTORED] เรียกใช้ Service แทนการยิง API โดยตรง
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:4000/api/questionnaire'),
-        headers: {'Content-Type': 'application/json'}, // TODO: เพิ่ม Token
-        body: jsonEncode({'answers': _answers}),
-      );
-
-      final result = jsonDecode(response.body);
-
+      // เรียกใช้ service ที่เราสร้างขึ้น
+      final result = await _surveyService.submitSurveyAnswers(_answers);
       if (!mounted) return;
 
       // แสดงข้อความจาก API
@@ -101,9 +96,9 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                 // ถ้าส่งแบบสอบถามสำเร็จ จะ redirect ไปหน้าแรก
                 if (result['status'] == true) {
                   Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const navbar.MainScreen(),
+                    context, // 👈 [THE FIX] เปลี่ยนเป้าหมายการนำทาง
+                    MaterialPageRoute( // ไปยังหน้ากรอกข้อมูลการเงินต่อ
+                      builder: (context) => const FinancialDataQAPage(),
                     ),
                   );
                 }
@@ -120,8 +115,8 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('ข้อผิดพลาด'),
-          content: const Text('ไม่สามารถส่งแบบสอบถามได้ กรุณาลองใหม่อีกครั้ง'),
+          title: const Text('เกิดข้อผิดพลาด'),
+          content: Text(error.toString().replaceFirst("Exception: ", "")),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -199,7 +194,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
+                          color: Colors.black.withOpacity(0.1), // 👈 4. [FIXED] แก้ withValues
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -212,7 +207,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16.0),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: Colors.white.withOpacity(0.3), // 👈 4. [FIXED] แก้ withValues
                               borderRadius: BorderRadius.circular(8),
                             ),
                             padding: const EdgeInsets.all(12.0),

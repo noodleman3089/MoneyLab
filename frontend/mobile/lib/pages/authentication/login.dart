@@ -68,14 +68,32 @@ class _LoginPageState extends State<LoginPage> {
         // 👈 2. [THE FIX] บันทึก Token และข้อมูลผู้ใช้ลงใน SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', result['token']);
-        if (result['user'] != null) {
-          await prefs.setString('user', jsonEncode(result['user']));
-        }
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
-        ); // เปลี่ยนหน้าไปที่ MainScreen
+        // --- ✨ [THE FIX] ตรวจสอบสถานะการทำแบบสอบถาม ---
+        final user = result['user'];
+        if (user != null) {
+          await prefs.setString('user', jsonEncode(user)); // บันทึกข้อมูล user ไว้เหมือนเดิม
+
+          // ตรวจสอบว่าเคยทำแบบสอบถามหรือยัง
+          final bool surveyCompleted = user['survey_completed'] ?? false;
+
+          if (surveyCompleted) {
+            // ถ้าเคยทำแล้ว ไปหน้าหลัก
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
+            );
+          } else {
+            // ถ้ายังไม่เคยทำ บังคับไปหน้าแบบสอบถาม
+            Navigator.pushNamed(context, '/questionnaire'); // สมมติว่ามี Route ชื่อ /questionnaire
+          }
+        } else {
+          // กรณีไม่มีข้อมูล user กลับมา (Fallback) ให้ไปหน้าหลัก
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
+          );
+        }
       }
     } catch (error) {
       // ⭐️ (แก้ไข) จัดการ Error ที่ service โยนมา

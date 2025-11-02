@@ -1,6 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // สำหรับ debugPrint
+import 'package:shared_preferences/shared_preferences.dart'; // 👈 1. Import SharedPreferences
 import '../config/api_config.dart'; // 👈 1. Import config ใหม่
 
 class AutheService {
@@ -24,6 +25,14 @@ class AutheService {
 
       // ถอดรหัส JSON ที่ได้กลับมา
       final Map<String, dynamic> result = jsonDecode(response.body);
+
+      // --- ✨ ส่วนที่เพิ่มเข้ามา: การจัดการ Token ---
+      if (result['status'] == true && result['token'] != null) {
+        // 2. ถ้าล็อกอินสำเร็จและมี token ให้บันทึกลง SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', result['token']);
+        debugPrint('✅ Token saved successfully!');
+      }
 
       // ส่งค่ากลับไปให้ UI (ไม่ว่า status จะ true หรือ false)
       // เพราะ UI (login.dart) จะเป็นคนจัดการแสดง SnackBar เอง
@@ -99,6 +108,14 @@ class AutheService {
       // ถอดรหัส JSON ที่ได้กลับมา
       final Map<String, dynamic> result = jsonDecode(response.body);
 
+      // --- ✨ [ย้ายมาที่นี่] การจัดการ Token หลังยืนยัน OTP สำเร็จ ---
+      if (result['status'] == true && result['token'] != null) {
+        // ถ้า OTP ถูกต้อง และ API ส่ง token กลับมา ให้บันทึกลงเครื่อง
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', result['token']);
+        debugPrint('✅ OTP verified. Token saved successfully!');
+      }
+
       // ส่งค่ากลับไปให้ UI
       return result;
     } catch (e) {
@@ -163,6 +180,20 @@ class AutheService {
     } catch (e) {
       debugPrint('AutheService ResetPassword Error: $e');
       throw Exception('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
+
+  /// ล็อกเอาท์ผู้ใช้โดยการลบ Token ออกจากเครื่อง
+  Future<void> logout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('token');
+      // อาจจะลบข้อมูลอื่น ๆ ที่เกี่ยวกับ user session ด้วยก็ได้
+      // await prefs.remove('user_id');
+      debugPrint('✅ Token removed. User logged out.');
+    } catch (e) {
+      debugPrint('AutheService Logout Error: $e');
+      throw Exception('เกิดข้อผิดพลาดระหว่างการล็อกเอาท์');
     }
   }
 }
