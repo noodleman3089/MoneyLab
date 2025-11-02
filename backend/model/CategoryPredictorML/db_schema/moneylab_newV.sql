@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
--- ========================
+ ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS otp_verification (
   password_hash VARCHAR(255) NOT NULL,
   expires_at DATETIME NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  verified TINYINT DEFAULT 0
+  verified TINYINT(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
@@ -389,7 +389,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   message TEXT NULL,
   reference_type VARCHAR(100) NULL, -- e.g. 'transaction','goal','investment'
   reference_id VARCHAR(255) NULL,
-  is_read TINYINT NOT NULL DEFAULT 0,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   read_at TIMESTAMP NULL,
 
@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- ========================
 CREATE TABLE IF NOT EXISTS `log` (
   log_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
   actor_id BIGINT UNSIGNED NULL, -- who caused action (user/admin/system)
   actor_type ENUM('user','admin','system','api') NOT NULL DEFAULT 'user',
   table_name VARCHAR(128) NULL,
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS `log` (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_log_user FOREIGN KEY (user_id) REFERENCES users(user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE
+    ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX ix_log_user ON `log` (user_id);

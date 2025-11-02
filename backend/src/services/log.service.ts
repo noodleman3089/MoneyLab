@@ -4,7 +4,7 @@ import { query } from '../index'; // import ฟังก์ชัน query ข�
 
 // 1. สร้าง Interface สำหรับ Options
 interface LogOptions {
-  user_id: number; // 👈 User ที่ "ถูก" กระทำ (Affected User)
+  user_id: number | null; // 👈 User ที่ "ถูก" กระทำ (Affected User)
   action: string; // 👈 การกระทำ เช่น 'LOGIN_SUCCESS', 'UPDATE_PROFILE'
   
   // Actor: ผู้กระทำ (อาจจะเป็น user คนเดียวกัน, admin, หรือ system)
@@ -44,9 +44,6 @@ export async function logActivity(options: LogOptions): Promise<void> {
     changed_fields = null,
   } = options;
 
-  console.log('--- 1. logActivity CALLED ---');
-  console.log('--- ACTION:', options.action);
-
   // 3. ดึง IP และ User Agent จาก Request (ถ้ามี)
   const ip_address = req ? req.ip : null;
   const user_agent = req ? req.get('User-Agent') : null;
@@ -80,18 +77,10 @@ export async function logActivity(options: LogOptions): Promise<void> {
     description
   ];
 
-  console.log('--- 2. EXECUTING SQL ---', sql.substring(0, 100) + '...');
-  console.log('--- PARAMS:', params);
-
   // 5. บันทึก Log และดักจับ Error
   try {
     await query(sql, params);
-    console.log('--- 3. LOG INSERTED SUCCESSFULLY! ---');
   } catch (err) {
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.error('--- ❌ CRITICAL: FAILED TO WRITE LOG ---');
-    console.error(err);
-    console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
     console.error('CRITICAL: Failed to write to log table:', err);
   }
 }

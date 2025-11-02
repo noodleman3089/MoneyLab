@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../index';
 import { logActivity } from '../services/log.service';
+import { ActorRoleType } from '../middlewares/authMiddleware';
 
 const controllers_L = express();
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -61,8 +62,13 @@ controllers_L.post('/login',
       req: req
     });
 
+    const dbRole: string = user.role;
+    const tokenRole: ActorRoleType = (dbRole === 'admin' || dbRole === 'system' || dbRole === 'api') 
+                                      ? dbRole 
+                                      : 'user';
+
     const token = jwt.sign(
-      { user_id: user.user_id, username: user.username, role: user.role },
+      { user_id: user.user_id, username: user.username, role: tokenRole },
       SECRET_KEY!,
       { expiresIn: '1h' }
     );
@@ -78,8 +84,8 @@ controllers_L.post('/login',
 
   } catch (err: any) {
     await logActivity({
-        user_id: -1, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
-        actor_id: -1,
+        user_id: 0, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
+        actor_id: 0,
         actor_type: 'system',
         action: 'LOGIN_EXCEPTION',
         description: `Login process failed with error: ${err.message}`,

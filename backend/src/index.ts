@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import mysql from 'mysql2';
 import dotenv from 'dotenv';
@@ -15,6 +15,7 @@ import savingGoalsRoutes from './routes/savingGoals';
 import walletRouter from './routes/wallet';
 import savingTransactionRoutes from './routes/saving_transactions';
 import surveyRouter from './routes/survey';
+import notificationRoutes from './routes/notifications'; // 👈 เพิ่มบรรทัดนี้
 //Controllers
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
@@ -51,9 +52,11 @@ console.log('ENV:', {
 const app = express();
 const PORT = process.env.PORT;
 
+// --- Middlewares ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'))); // ทำให้เข้าถึงไฟล์ใน uploads ได้
 
 const dbTimezone = process.env.DB_TIMEZONE || '+07:00';
 // MySQL Connection
@@ -79,36 +82,29 @@ export function query(sql: string, params: any[] = []): Promise<any> {
   });
 }
 
-// Routes
-app.use('/api', profileRoutes);
-
+// --- [THE FIX] จัดการ Routes ทั้งหมดให้เป็นระเบียบ ---
+app.use('/api', [loginControllers, registerControllers, resetPasswordRoutes, AdminControllers]);
+app.use('/api/profile', profileRoutes);
+app.use('/api/transactions-ocr', transactionsOCR); // แก้ Path ให้ถูกต้อง
 app.use('/api/transactions', transactionRoutes);
-
-app.use('/api/transactions/ocr', transactionsOCR);
-
-app.use("/api/daily-budget", DailyBudgetrouter);
-
-app.use('/api/saving-goals', savingGoalsRoutes);
-
-app.use('/api/wallet', walletRouter);
-
-app.use('/api/saving-transactions', savingTransactionRoutes);
-
-app.use('/api/survey', surveyRouter);
-
 app.use('/api/recommendations', recommendationRoutes);
-
-
-//Controllers
-app.use('/api', registerControllers);
-
-app.use('/api', resetPasswordRoutes);
-
-app.use('/api', loginControllers);
-
-app.use('/api', AdminControllers);
+app.use('/api/survey', surveyRouter);
+app.use('/api/notifications', notificationRoutes); // เพิ่ม notificationRoutes
+app.use('/api/saving-goals', savingGoalsRoutes); 
+app.use('/api/saving-transactions', savingTransactionRoutes);
+app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตัวแปรที่ import มา
+app.use('/api/wallet', walletRouter);
 
 // Start Web server
 app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
+  console.log(`🚀 Node.js Server is running on http://localhost:${PORT}`);
+});
+
+// --- Basic Error Handler (ควรอยู่ท้ายสุดก่อน app.listen) ---
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("❌ An error occurred:", err.stack);
+  res.status(500).json({
+    message: "An internal server error occurred.",
+    error: err.message,
+  });
 });

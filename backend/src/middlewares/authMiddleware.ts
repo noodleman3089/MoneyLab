@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
+export type ActorRoleType = 'user' | 'admin' | 'system' | 'api';
 // 1. 🚨 แก้ไขเรื่องความปลอดภัย (ใช้ SECRET_KEY จาก .env และ Fail-Fast)
 const SECRET_KEY = process.env.SECRET_KEY;
 
@@ -13,7 +14,7 @@ if (!SECRET_KEY) {
 interface JwtPayload {
   user_id: number;
   username: string;
-  role: string;
+  role: ActorRoleType;
 }
 
 // 3. ⌨️ สร้าง Interface สำหรับ Request ที่มี user

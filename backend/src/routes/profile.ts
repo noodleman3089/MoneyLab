@@ -1,18 +1,10 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '../index';
-import { authenticateToken } from '../middlewares/authMiddleware';
+import { authenticateToken, AuthRequest } from '../middlewares/authMiddleware';
+import { logActivity } from '../services/log.service';
 
 const routerP = express.Router();
-
-interface JwtPayload {
-  user_id: number;
-  username: string;
-}
-
-interface AuthRequest extends Request {
-  user?: JwtPayload;
-}
 
 routerP.post(
   '/profile',
@@ -29,7 +21,13 @@ routerP.post(
       return res.status(400).json({ status: false, errors: errors.array() });
     }
 
-    const userId = req.user!.user_id;
+    const actor = req.user;
+    
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    const userId = actor.user_id;
     const {
       occupation_id,
       occupation_other,
@@ -68,8 +66,32 @@ routerP.post(
         ]
       );
 
+      await logActivity({
+        user_id: userId, // User ที่สร้าง Profile
+        actor_id: userId,
+        actor_type: actor.role || 'user',
+        action: 'CREATE_PROFILE',
+        table_name: 'profile',
+        record_id: result.insertId, // 👈 ID ของแถวที่ถูกสร้าง
+        new_value: req.body, // 👈 บันทึกข้อมูลใหม่
+        description: `User ${userId} created profile.`,
+        req: req
+      });
+
       res.json({ status: true, message: 'Profile inserted successfully', profile_id: result.insertId });
-    } catch (err) {
+    } catch (err: any) {
+      await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role || 'user',
+        action: 'CREATE_PROFILE_EXCEPTION',
+        table_name: 'profile',
+        record_id: 0,
+        new_value: req.body,
+        description: `Failed to create profile for User ${userId}.Error: ${err.message}`,
+        req: req
+      });
+      
       console.error(err);
       res.status(500).json({ status: false, message: 'Database error' });
     }
