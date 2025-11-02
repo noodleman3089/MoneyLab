@@ -30,11 +30,16 @@ const getAuthHeaders = () => {
  * @param offset - ตำแหน่งเริ่มต้น
  * @returns Promise<UsersResponse>
  */
-export const fetchUsers = async (limit: number, offset: number): Promise<UsersResponse> => {
+export const fetchUsers = async (limit: number, offset: number, role?: 'user' | 'admin' | null): Promise<UsersResponse> => {
   const params = new URLSearchParams({
     limit: limit.toString(),
     offset: offset.toString(),
   });
+
+  // เพิ่ม role เข้าไปใน query params ถ้ามีการระบุค่ามา (และไม่ใช่ 'all')
+  if (role) {
+    params.append('role', role);
+  }
 
   const url = `${getApiUrl()}${API_ENDPOINT}?${params.toString()}`;
 
@@ -92,6 +97,19 @@ export const softDeleteUser = async (userId: number): Promise<any> => {
 export const fetchUserDetails = async (userId: number): Promise<{ status: boolean, data: UserDetails }> => {
   const url = `${getApiUrl()}/api/users/${userId}`;
   const response = await axios.get(url, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+/**
+ * Service สำหรับเลื่อนขั้นผู้ใช้ให้เป็น Admin
+ * @param userId - ID ของผู้ใช้ที่ต้องการเลื่อนขั้น
+ * @returns Promise<any>
+ */
+export const promoteUser = async (userId: number): Promise<any> => {
+  const url = `${getApiUrl()}/api/users/${userId}/promote`;
+  const response = await axios.patch(url, {}, { // ใช้ PATCH method
     headers: getAuthHeaders(),
   });
   return response.data;

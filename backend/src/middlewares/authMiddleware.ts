@@ -46,3 +46,18 @@ jwt.verify(token, JWT_SECRET, (err, decoded) => {
     next(); 
   }); 
 };
+
+
+/**
+ * Middleware สำหรับตรวจสอบว่าผู้ใช้ที่ล็อกอินมี role เป็น 'admin' หรือไม่
+ */
+export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
+  // req.user จะถูกสร้างโดย authenticateToken middleware
+  const user = (req as any).user;
+
+  if (user && user.role === 'admin') {
+    next(); // ถ้าเป็น admin ให้ผ่านไปทำงานต่อ
+  } else {
+    res.status(403).json({ status: false, message: 'Forbidden: Admins only' });
+  }
+};

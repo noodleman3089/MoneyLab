@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link'; // 👈 1. Import Link สำหรับทำเมนู
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { User } from '@/app/services/user.types'; // Import type จากไฟล์กลาง
 import { DashboardSummary, ExpenseChartData, IncomeChartData } from '@/app/services/dashboard.types'; // Import type ของ Dashboard
@@ -17,6 +18,7 @@ export default function UserSummaryDashboard() {
   const [recentUsers, setRecentUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // 👈 2. เพิ่ม State สำหรับเปิด/ปิดเมนู
 
   const COLORS = ['#EF6B61', '#1ECAD8'];
 
@@ -30,7 +32,7 @@ export default function UserSummaryDashboard() {
         fetchDashboardSummary(),
         fetchExpenseChartData(),
         fetchIncomeChartData(),
-        fetchUsers(10, 0) // ดึงผู้ใช้ล่าสุด 10 คน
+        fetchUsers(10, 0, 'user') // 👈 3. [THE FIX] ดึงเฉพาะผู้ใช้ที่มี role 'user'
       ]);
 
       if (summaryRes.status) setSummaryData(summaryRes.data);
@@ -76,15 +78,34 @@ export default function UserSummaryDashboard() {
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <header className="bg-teal-500 text-white p-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold font-be-vietnam-pro">MONEY LAB</h1>
+      <header className="bg-teal-500 text-white p-4 flex justify-between items-center relative">
+        <Link href="/admin/main" className="text-2xl font-bold font-be-vietnam-pro hover:text-teal-200 transition-colors">
+          MONEY LAB
+        </Link>
         <div className="flex items-center gap-4">
-          <button type="button" className="relative">
-            <span className="text-2xl">🔔</span>
-            <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">5</span>
+          {/* 👈 4. [REMOVED] ลบปุ่มแจ้งเตือนและปุ่มผู้ใช้ */}
+          <button
+            type="button"
+            className="text-2xl p-2 rounded-full hover:bg-teal-600"
+            onClick={() => setIsMenuOpen(!isMenuOpen)} // 👈 5. ทำให้ปุ่มเมนูกดได้
+          >
+            ☰
           </button>
-          <button type="button" className="text-2xl">👤</button>
-          <button type="button" className="text-2xl">☰</button>
+
+          {/* 👈 6. [NEW] ส่วนของเมนู Dropdown */}
+          {isMenuOpen && (
+            <div className="absolute top-16 right-4 bg-white rounded-md shadow-lg w-64 z-10 text-gray-800 font-be-vietnam-pro">
+              <ul className="py-2">
+                <li>
+                  <Link href="/admin/main" className="block px-4 py-2 hover:bg-gray-100">หน้าหลัก Admin</Link>
+                </li>
+                <li>
+                  <Link href="/admin/ShowregisterUser" className="block px-4 py-2 hover:bg-gray-100">จัดการผู้ใช้งาน</Link>
+                </li>
+                {/* สามารถเพิ่มเมนูอื่นๆ ได้ที่นี่ */}
+              </ul>
+            </div>
+          )}
         </div>
       </header>
 

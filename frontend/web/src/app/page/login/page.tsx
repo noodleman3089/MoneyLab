@@ -29,19 +29,18 @@ export default function LoginPage() {
       });
 
       if (result.status === true) {
-        setMessage({ type: 'success', text: 'เข้าสู่ระบบสำเร็จ!' });
-        
-        // 👈 3. [IMPLEMENTED] บันทึก token และข้อมูลผู้ใช้
-        localStorage.setItem('token', result.token!);
-        if (result.user) {
-          localStorage.setItem('user', JSON.stringify(result.user));
-        }
-
-        
+        // --- [THE FIX] ตรวจสอบ Role ก่อน ---
         if (result.user?.role === 'admin') {
+          setMessage({ type: 'success', text: 'เข้าสู่ระบบสำเร็จ!' });
+          // บันทึก token และข้อมูลผู้ใช้
+          localStorage.setItem('token', result.token!);
+          if (result.user) {
+            localStorage.setItem('user', JSON.stringify(result.user));
+          }
           router.push('/admin/main');
         } else {
-          router.push('/page/main'); // ไปหน้าหลักสำหรับ User
+          // ถ้าเป็น user พยายามจะเข้า ให้แจ้งเตือนและไม่อนุญาต
+          setMessage({ type: 'error', text: 'บัญชีของคุณไม่มีสิทธิ์เข้าถึงส่วนนี้' });
         }
       } else {
         setMessage({ type: 'error', text: result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
@@ -54,16 +53,6 @@ export default function LoginPage() {
     }
   };
 
-  // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า Forget_Password
-  const handleForgotPassword = () => {
-    router.push("/page/Forget_Password");
-  };
-
-  // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า register
-  const handleSignUp = () => {
-    router.push("/page/register");
-  };
-
   return (
     <div className="min-h-screen flex">
       <div className="flex-1 bg-teal-500 flex items-start justify-start p-8">
@@ -71,7 +60,9 @@ export default function LoginPage() {
 
       <div className="flex-1 bg-[#C7DCDE] flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
-          <h1 className="text-[#223248] text-5xl font-semibold mb-12 text-center font-be-vietnam-pro">Login</h1>
+          <h1 className="text-[#223248] text-5xl font-semibold mb-12 text-center font-be-vietnam-pro">
+            Admin Login
+          </h1>
 
           {/* 👈 5. [NEW] ส่วนแสดงข้อความ Success/Error */}
           {message && (
@@ -112,22 +103,7 @@ export default function LoginPage() {
               {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'Confirm'}
             </button>
 
-            <div className="flex justify-between items-center mt-6 text-[#223248] text-sm font-be-vietnam-pro">
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="hover:text-[#008170] hover:font-bold transition-colors duration-200"
-              >
-                Forget Password ?
-              </button>
-              <button
-                type="button"
-                onClick={handleSignUp}
-                className="hover:text-[#008170] hover:font-bold transition-colors duration-200"
-              >
-                Don't have account
-              </button>
-            </div>
+            {/* 👈 [REMOVED] ลบปุ่ม Forget Password และ Sign Up ออก */}
           </form>
         </div>
       </div>
