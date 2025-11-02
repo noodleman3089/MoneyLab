@@ -58,7 +58,7 @@ routerA.get('/api/users', verifyAdmin, async (req: Request, res: Response) => {
 });
 
 // DELETE - ลบ user
-routerA.delete('/api/users/:id', verifyAdmin, async (req: Request, res: Response) => {
+routerA.delete('api/users/:id', verifyAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const sql = `DELETE FROM users WHERE user_id = ?`;
