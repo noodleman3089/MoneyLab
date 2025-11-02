@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart'; // สำหรับ debugPrint
 
 class AutheService {
   // ⭐️ หมายเหตุ: URL สำหรับเชื่อมต่อ API
-  // ถ้าทดสอบบน Web/Desktop: ใช้ 'http://localhost:5000/api'
-  // ถ้าทดสอบบน Android Emulator: ต้องใช้ 'http://10.0.2.2:5000/api'
-  static const String _baseUrl = 'http://localhost:5000/api';
+  // ถ้าทดสอบบน Web/Desktop: ใช้ 'http://localhost:5000/api/auth'
+  // ถ้าทดสอบบน Android Emulator: ต้องใช้ 'http://10.0.2.2:5000/api/auth'
+  static const String _baseUrl = 'http://localhost:5000/api/auth';
 
   static const Map<String, String> _headers = {
     'Content-Type': 'application/json',
