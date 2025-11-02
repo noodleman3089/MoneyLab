@@ -2,13 +2,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/api_config.dart'; // 👈 1. Import config ใหม่
 
 class ProfileService {
-  // ⭐️ หมายเหตุ: URL สำหรับเชื่อมต่อ API
-  // ถ้าทดสอบบน Web/Desktop: ใช้ 'http://localhost:5000/api'
-  // ถ้าทดสอบบน Android Emulator: ต้องใช้ 'http://10.0.2.2:5000/api'
-  static const String _baseUrl = 'http://localhost:5000/api';
-
   /// ดึงข้อมูลโปรไฟล์ของผู้ใช้ที่ล็อกอินอยู่
   ///
   /// คืนค่า [Map<String, dynamic>] ที่ได้จาก JSON response
@@ -31,7 +27,7 @@ class ProfileService {
 
       // 3. เรียก API
       final response = await http.get(
-        Uri.parse('$_baseUrl/profile'), // ชี้ไปที่ endpoint /profile
+        Uri.parse(ApiConfig.profileUrl), // 👈 [THE FIX]
         headers: headers,
       );
 

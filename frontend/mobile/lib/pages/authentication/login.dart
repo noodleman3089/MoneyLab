@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
+// 👈 1. [NEW] Import SharedPreferences เพื่อใช้บันทึก Token
+import 'package:shared_preferences/shared_preferences.dart';
+
 // ไปยังหน้า MainScreen หลังล็อกอินสำเร็จ
 import '../components/Navbar.dart' as navbar;
 
@@ -62,7 +65,13 @@ class _LoginPageState extends State<LoginPage> {
 
       // ถ้าเข้าสู่ระบบสำเร็จ (ส่วนนี้เหมือนเดิม)
       if (result['status'] == true) {
-        // ... (จัดการเก็บ token) ...
+        // 👈 2. [THE FIX] บันทึก Token และข้อมูลผู้ใช้ลงใน SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', result['token']);
+        if (result['user'] != null) {
+          await prefs.setString('user', jsonEncode(result['user']));
+        }
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const navbar.MainScreen()),

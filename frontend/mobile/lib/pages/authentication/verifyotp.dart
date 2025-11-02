@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/authe_service.dart';
-import 'login.dart';
+import '../Questionnaire.dart'; // 👈 1. Import หน้า QuestionnairePage
 
 class VerifyOtpPage extends StatefulWidget {
   final String email;
@@ -75,10 +75,11 @@ class _VerifyOtpPageState extends State<VerifyOtpPage> {
       );
 
       if (result['status'] == true) {
+        // 👈 2. [THE FIX] เปลี่ยนจากไปหน้า Login เป็นไปหน้า Questionnaire
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        ); // ไปที่หน้า LoginPage
+          MaterialPageRoute(builder: (context) => const QuestionnairePage()),
+        );
       }
     } catch (error) {
       if (!mounted) return;

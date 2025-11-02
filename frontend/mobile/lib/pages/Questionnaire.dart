@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'components/Navbar.dart' as navbar;
 import 'FinancialDataQA.dart';
+import '../services/survey_service.dart'; // 👈 1. Import service ใหม่
 
 class QuestionnairePage extends StatefulWidget {
   const QuestionnairePage({super.key});
@@ -13,84 +14,63 @@ class QuestionnairePage extends StatefulWidget {
 }
 
 class _QuestionnairePageState extends State<QuestionnairePage> {
-  // เก็บคำตอบของแต่ละคำถาม (10 คำถาม)
-  final Map<String, List<String>> answers = {
-    'q1': [],
-    'q2': [],
-    'q3': [],
-    'q4': [],
-    'q5': [],
-    'q6': [],
-    'q7': [],
-    'q8': [],
-    'q9': [],
-    'q10': [],
-  };
+  // 👈 2. [REFACTORED] State สำหรับเก็บข้อมูลที่ดึงมาจาก API
+  final SurveyService _surveyService = SurveyService();
+  List<dynamic> _questions = [];
+  Map<int, List<String>> _answers = {}; // ใช้ question_id (int) เป็น key
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  // คำถามทั้งหมด
-  final List<Map<String, dynamic>> questions = [
-    {
-      'id': 'q1',
-      'title': 'ไก่กับไข่อะไรเกิดก่อน',
-      'options': ['ไม่รู้', 'ไม่แน่ใจ', 'ไม่ตอบ', 'ไก่']
-    },
-    {
-      'id': 'q2',
-      'title': 'คำถามที่2',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q3',
-      'title': 'คำถามที่3',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q4',
-      'title': 'คำถามที่4',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q5',
-      'title': 'คำถามที่5',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q6',
-      'title': 'คำถามที่6',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q7',
-      'title': 'คำถามที่7',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q8',
-      'title': 'คำถามที่8',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q9',
-      'title': 'คำถามที่9',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-    {
-      'id': 'q10',
-      'title': 'คำถามที่10',
-      'options': ['ตัวเลือกที่1', 'ตัวเลือกที่2', 'ตัวเลือกที่3', 'ตัวเลือกที่4']
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuestions();
+  }
+
+  Future<void> _fetchQuestions() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await _surveyService.fetchSurveyQuestions();
+      if (result['status'] == true && mounted) {
+        setState(() {
+          _questions = result['data'];
+          // สร้างโครง answers จากคำถามที่ได้มา
+          _answers = {for (var q in _questions) q['question_id']: []};
+        });
+      } else {
+        throw Exception(result['message'] ?? 'Failed to load questions');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   // จัดการการเปลี่ยนแปลง checkbox
-  void handleCheckboxChange(String questionId, String option) {
+  void handleCheckboxChange(int questionId, String optionValue, bool isSingleChoice) {
     setState(() {
-      final currentAnswers = answers[questionId]!;
-      if (currentAnswers.contains(option)) {
+      final currentAnswers = _answers[questionId]!;
+      if (isSingleChoice) {
+        currentAnswers.clear();
+        currentAnswers.add(optionValue);
+      } else {
+        if (currentAnswers.contains(optionValue)) {
         // ถ้าเลือกแล้ว ให้ลบออก
-        currentAnswers.remove(option);
+        currentAnswers.remove(optionValue);
       } else {
         // ถ้ายังไม่เลือก ให้เพิ่มเข้าไป
-        currentAnswers.add(option);
+        currentAnswers.add(optionValue);
+      }
       }
     });
   }
@@ -100,8 +80,8 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
     try {
       final response = await http.post(
         Uri.parse('http://localhost:4000/api/questionnaire'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'answers': answers}),
+        headers: {'Content-Type': 'application/json'}, // TODO: เพิ่ม Token
+        body: jsonEncode({'answers': _answers}),
       );
 
       final result = jsonDecode(response.body);
@@ -174,11 +154,27 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
             colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
           ),
         ),
-        child: Column(
-          children: [
-            // Main Content
-            Expanded(
-              child: SingleChildScrollView(
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator(color: Colors.white))
+              : _errorMessage != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('เกิดข้อผิดพลาด: $_errorMessage', style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 16), textAlign: TextAlign.center),
+                            const SizedBox(height: 20),
+                            ElevatedButton(onPressed: _fetchQuestions, child: const Text('ลองอีกครั้ง'))
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
@@ -212,8 +208,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        // Questions
-                        ...questions.map((question) {
+                        ..._questions.map((question) {
                           return Container(
                             margin: const EdgeInsets.only(bottom: 16.0),
                             decoration: BoxDecoration(
@@ -226,7 +221,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                               children: [
                                 // Question Title
                                 Text(
-                                  question['title'],
+                                  question['question_text'],
                                   style: const TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -237,10 +232,13 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
 
                                 // Options
                                 ...question['options'].map<Widget>((option) {
+                                  final questionId = question['question_id'];
+                                  final isSingleChoice = question['question_type'] == 'single_choice';
                                   return InkWell(
                                     onTap: () => handleCheckboxChange(
-                                      question['id'],
-                                      option,
+                                      questionId,
+                                      option['value'],
+                                      isSingleChoice,
                                     ),
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
@@ -253,25 +251,29 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                                       ),
                                       child: Row(
                                         children: [
-                                          Checkbox(
-                                            value: answers[question['id']]!
-                                                .contains(option),
-                                            onChanged: (bool? value) {
-                                              handleCheckboxChange(
-                                                question['id'],
-                                                option,
-                                              );
-                                            },
-                                            activeColor: const Color(0xFF4FB7B3),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(4),
-                                            ),
-                                          ),
+                                          isSingleChoice
+                                              ? Radio<String>(
+                                                  value: option['value'],
+                                                  groupValue: _answers[questionId]!.isNotEmpty ? _answers[questionId]!.first : null,
+                                                  onChanged: (value) {
+                                                    if (value != null) {
+                                                      handleCheckboxChange(questionId, value, true);
+                                                    }
+                                                  },
+                                                  activeColor: const Color(0xFF4FB7B3),
+                                                )
+                                              : Checkbox(
+                                                  value: _answers[questionId]!.contains(option['value']),
+                                                  onChanged: (bool? value) {
+                                                    handleCheckboxChange(questionId, option['value'], false);
+                                                  },
+                                                  activeColor: const Color(0xFF4FB7B3),
+                                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                                ),
                                           const SizedBox(width: 8),
                                           Expanded(
                                             child: Text(
-                                              option,
+                                              option['label'],
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 color: Color(0xFF223248),
@@ -357,6 +359,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
             ),
           ),
         ],
+      ),
         ),
       ),
     );

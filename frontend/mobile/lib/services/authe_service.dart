@@ -1,12 +1,9 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // สำหรับ debugPrint
+import '../config/api_config.dart'; // 👈 1. Import config ใหม่
 
 class AutheService {
-  // ⭐️ หมายเหตุ: URL สำหรับเชื่อมต่อ API
-  // ถ้าทดสอบบน Web/Desktop: ใช้ 'http://localhost:5000/api/auth'
-  // ถ้าทดสอบบน Android Emulator: ต้องใช้ 'http://10.0.2.2:5000/api/auth'
-  static const String _baseUrl = 'http://localhost:5000';
 
   static const Map<String, String> _headers = {
     'Content-Type': 'application/json',
@@ -20,7 +17,7 @@ class AutheService {
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/login'), // ชี้ไปที่ endpoint /login
+        Uri.parse(ApiConfig.loginUrl), // 👈 [THE FIX]
         headers: _headers,
         body: jsonEncode({'username': username, 'password': password}),
       );
@@ -55,7 +52,7 @@ class AutheService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/auth/register'), // ชี้ไปที่ endpoint /register
+        Uri.parse(ApiConfig.registerUrl), // 👈 [THE FIX]
         headers: _headers,
         body: jsonEncode({
           'username': username,
@@ -91,7 +88,7 @@ class AutheService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/api/auth/verify-otp'), // ชี้ไปที่ endpoint /verify-otp
+        Uri.parse(ApiConfig.verifyOtpUrl), // 👈 [THE FIX]
         headers: _headers,
         body: jsonEncode({
           'email': email,
@@ -121,7 +118,7 @@ class AutheService {
   Future<Map<String, dynamic>> forgotPassword(String identifier) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/forgotpassword'), // ชี้ไปที่ endpoint /forgotpassword
+        Uri.parse(ApiConfig.forgotPasswordUrl), // 👈 [THE FIX]
         headers: _headers,
         body: jsonEncode({
           'identifier': identifier,
@@ -153,7 +150,7 @@ class AutheService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/resetpassword'), // ชี้ไปที่ endpoint /resetpassword
+        Uri.parse(ApiConfig.resetPasswordUrl), // 👈 [THE FIX]
         headers: _headers,
         body: jsonEncode({
           'token': token,
