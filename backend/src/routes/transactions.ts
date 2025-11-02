@@ -99,9 +99,7 @@ routes_T.post(
       }
 
       // ✅ ถ้าไม่มี transaction_date → ใช้ NOW()
-      const dateToUse = transaction_date
-        ? moment(transaction_date).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss")
-        : moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
+      const dateToUse = transaction_date? moment(transaction_date).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"): moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
 
       // ✅ บันทึกข้อมูลลง transactions
       const result: any = await query(
@@ -111,12 +109,12 @@ routes_T.post(
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, walletId, category_id, type, amount, fee,
-          req.body.sender_name || null,
-          req.body.receiver_name || null,
-          req.body.reference_id || null,
-          req.body.payment_source || null,
-          req.body.data_source || 'manual',
-          req.body.confidence || null,
+          sender_name || null,
+          receiver_name || null,
+          reference_id || null,
+          payment_source || null,
+          data_source,
+          confidence,
           dateToUse,
         ]
       );
