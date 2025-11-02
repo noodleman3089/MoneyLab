@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { query } from '../index';
-import { authenticateToken, isAdmin } from '../middlewares/authMiddleware';
+import { authenticateToken, verifyAdmin } from '../middlewares/authMiddleware';
 
 const usersController = express.Router();
 
@@ -12,7 +12,7 @@ const usersController = express.Router();
 usersController.patch(
   '/users/:userId/promote',
   authenticateToken, // 1. ตรวจสอบว่าล็อกอินหรือยัง
-  isAdmin,           // 2. ตรวจสอบว่าเป็น Admin หรือไม่
+  verifyAdmin,           // 2. ตรวจสอบว่าเป็น Admin หรือไม่
   async (req: Request, res: Response, next: NextFunction) => {
     const userIdToPromote = req.params.userId;
 

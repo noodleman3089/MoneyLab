@@ -113,8 +113,59 @@ class AutheService {
     }
   }
 
-  // Future<Map<String, dynamic>> forgotPassword(String email) async {
-  //   // TODO: สร้าง logic สำหรับการลืมรหัสผ่าน
-  //   throw UnimplementedError();
-  // }
+  /// ส่งคำขอลืมรหัสผ่าน
+  ///
+  /// รับ [identifier] ซึ่งอาจเป็น email หรือ username
+  /// คืนค่า [Map<String, dynamic>] ที่ได้จาก JSON response
+  /// หรือโยน [Exception] ถ้า API ล้มเหลว
+  Future<Map<String, dynamic>> forgotPassword(String identifier) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/forgotpassword'), // ชี้ไปที่ endpoint /forgotpassword
+        headers: _headers,
+        body: jsonEncode({
+          'identifier': identifier,
+        }),
+      );
+
+      // ถอดรหัส JSON ที่ได้กลับมา
+      final Map<String, dynamic> result = jsonDecode(response.body);
+
+      // ส่งค่ากลับไปให้ UI
+      return result;
+    } catch (e) {
+      // จัดการข้อผิดพลาด
+      debugPrint('AutheService ForgotPassword Error: $e');
+      // โยน Exception เพื่อให้ UI (try...catch) รับไปจัดการต่อ
+      throw Exception('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
+
+  /// ส่งคำขอตั้งรหัสผ่านใหม่
+  ///
+  /// รับ [token], [password], [confirmPassword]
+  /// คืนค่า [Map<String, dynamic>] ที่ได้จาก JSON response
+  /// หรือโยน [Exception] ถ้า API ล้มเหลว
+  Future<Map<String, dynamic>> resetPassword({
+    required String token,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/resetpassword'), // ชี้ไปที่ endpoint /resetpassword
+        headers: _headers,
+        body: jsonEncode({
+          'token': token,
+          'password': password,
+          'confirmPassword': confirmPassword,
+        }),
+      );
+      final Map<String, dynamic> result = jsonDecode(response.body);
+      return result;
+    } catch (e) {
+      debugPrint('AutheService ResetPassword Error: $e');
+      throw Exception('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาลองใหม่อีกครั้ง');
+    }
+  }
 }

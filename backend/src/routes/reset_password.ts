@@ -11,7 +11,7 @@ const routerR = Router();
 /* ==========================================================
    1️⃣ ส่งลิงก์ Reset Password ไปยังอีเมล (ไม่ส่ง token ตรง)
 ========================================================== */
-routerR.post('/forgot-password', async (req: Request, res: Response) => {
+routerR.post('/forgotpassword', async (req: Request, res: Response) => {
   const { identifier } = req.body; // email หรือ username
   let userId: number = 0;
 
@@ -54,18 +54,22 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
       [userId, resetTokenHash, expireTimeStr]
     );
 
-    // ✅ สร้างลิงก์ Reset Password หน้าเว็บ
-    const resetLink = `https://yourfrontend.com/reset-password?token=${resetToken}`; // เปลี่ยนเป็น URL หน้ารีเซ็ตรหัสผ่านจริง
+    // ✅ [THE FIX] สร้างลิงก์ 2 รูปแบบ: สำหรับ Web และ Mobile (Deep Link)
+    const webResetLink = `${process.env.FRONTEND_WEB_URL || 'http://localhost:3000'}/page/reset-password?token=${resetToken}`;
+    const mobileResetLink = `moneylab://reset-password?token=${resetToken}`;
 
     // ส่งอีเมล
     await sendEmail(
       email,
       '🔒 Reset your MoneyLab password',
-      `สวัสดี ${user[0].username}, กดลิงก์นี้เพื่อรีเซ็ตรหัสผ่านของคุณ: ${resetLink}`,
+      `สวัสดี ${user[0].username}, กดลิงก์นี้เพื่อรีเซ็ตรหัสผ่านของคุณ: ${webResetLink}`,
       `<h2>สวัสดี ${user[0].username},</h2>
       <p>คุณได้ขอรีเซ็ตรหัสผ่าน MoneyLab</p>
       <p>กดลิงก์ด้านล่างเพื่อเปลี่ยนรหัสผ่านใหม่ (ลิงก์จะหมดอายุใน 10 นาที)</p>
-      <p><a href="${resetLink}" target="_blank" style="color:#0066cc">🔗 เปลี่ยนรหัสผ่านที่นี่</a></p>`
+      <p><strong>หากคุณใช้งานบนคอมพิวเตอร์:</strong></p>
+      <p><a href="${webResetLink}" target="_blank" style="color:#0066cc; font-weight:bold;">🔗 คลิกที่นี่เพื่อรีเซ็ตรหัสผ่านบนเว็บไซต์</a></p>
+      <p><strong>หากคุณใช้งานบนมือถือ:</strong></p>
+      <p><a href="${mobileResetLink}" style="color:#008000; font-weight:bold;">📱 คลิกที่นี่เพื่อเปิดแอป MoneyLab และรีเซ็ตรหัสผ่าน</a></p>`
     );
 
     await logActivity({
@@ -98,7 +102,7 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
 /* ==========================================================
    2️⃣ รีเซ็ตรหัสผ่าน (ตรวจซ้ำ, ความยาว, ใช้ token เดิม)
 ========================================================== */
-routerR.post('/reset-password', async (req: Request, res: Response) => {
+routerR.post('/resetpassword', async (req: Request, res: Response) => {
   const { token, newPassword, confirmPassword } = req.body;
   let userId: number = 0;
 

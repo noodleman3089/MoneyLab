@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
-// import 'Navbar.dart' as navbar;
+
+// 👈 1. Import service ที่สร้างขึ้นมาใหม่
+import '../services/profile_service.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -12,48 +12,56 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-  // TODO: เชื่อมต่อ API เพื่อดึงข้อมูลจริง
-  Map<String, dynamic> userData = {
-    'name': 'ผู้ใช้งาน',
-    'email': 'user@example.com',
-    'phone': '0XX-XXX-XXXX',
-    'registerDate': 'XX/XX/XXXX',
-    'mainIncome': '0.00',
-    'extraIncome': '0.00',
-  };
+  // 👈 2. สร้าง instance ของ service
+  final ProfileService _profileService = ProfileService();
 
-  bool isLoading = false;
+  // 👈 3. [REFACTORED] เปลี่ยน userData เป็น nullable และจัดการ state
+  Map<String, dynamic> userData = {
+    'user': {'username': 'กำลังโหลด...'},
+    'profile': {'main_income_amount': '0', 'side_income_amount': '0'}
+  };
+  bool isLoading = true;
+  String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // TODO: เรียก API เพื่อดึงข้อมูลผู้ใช้
-    // _fetchUserData();
+    // 👈 4. [IMPLEMENTED] เรียก API เพื่อดึงข้อมูลผู้ใช้
+    _fetchUserData();
   }
 
-  // TODO: ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้จาก API
-  // Future<void> _fetchUserData() async {
-  //   setState(() => isLoading = true);
-  //   try {
-  //     final response = await http.get(
-  //       Uri.parse('YOUR_API_URL/user/profile'),
-  //       headers: {'Authorization': 'Bearer YOUR_TOKEN'},
-  //     );
-  //     if (response.statusCode == 200) {
-  //       setState(() {
-  //         userData = json.decode(response.body);
-  //         isLoading = false;
-  //       });
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching user data: $e');
-  //     setState(() => isLoading = false);
-  //   }
-  // }
+  // 👈 5. [IMPLEMENTED] ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้จาก API
+  Future<void> _fetchUserData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+    try {
+      final result = await _profileService.fetchUserProfile();
+      if (result['status'] == true && mounted) {
+        setState(() {
+          userData = result['data'];
+        });
+      } else {
+        throw Exception(result['message'] ?? 'Failed to fetch profile data');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          errorMessage = e.toString().replaceFirst("Exception: ", "");
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
+  }
 
   double get totalMonthlyIncome {
-    double main = double.tryParse(userData['mainIncome'] ?? '0') ?? 0;
-    double extra = double.tryParse(userData['extraIncome'] ?? '0') ?? 0;
+    // 👈 6. [REFACTORED] ปรับให้ตรงกับโครงสร้างข้อมูลจาก API
+    double main = double.tryParse(userData['profile']?['main_income_amount']?.toString() ?? '0') ?? 0;
+    double extra = double.tryParse(userData['profile']?['side_income_amount']?.toString() ?? '0') ?? 0;
     return main + extra;
   }
 
@@ -95,6 +103,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
+          : errorMessage != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text('เกิดข้อผิดพลาด: $errorMessage', style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 16), textAlign: TextAlign.center,),
+                        const SizedBox(height: 20),
+                        ElevatedButton(onPressed: _fetchUserData, child: const Text('ลองอีกครั้ง'))
+                      ],
+                    ),
+                  ),
+                )
           : SafeArea(
               child: SingleChildScrollView(
                 child: Column(
@@ -151,7 +173,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           ),
                           const SizedBox(height: 15),
                           Text(
-                            userData['name'] ?? 'ผู้ใช้งาน',
+                            // 👈 7. [REFACTORED] ปรับให้ตรงกับโครงสร้างข้อมูลจาก API
+                            userData['user']?['username'] ?? 'ผู้ใช้งาน',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
@@ -189,17 +212,17 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         _buildInfoRow(
                           Icons.email_outlined,
                           'อีเมล',
-                          userData['email'] ?? 'ไม่ระบุ',
+                          userData['user']?['email'] ?? 'ไม่ระบุ',
                         ),
                         _buildInfoRow(
                           Icons.phone_outlined,
                           'เบอร์โทรศัพท์',
-                          userData['phone'] ?? 'ไม่ระบุ',
+                          userData['user']?['phone_number'] ?? 'ไม่ระบุ',
                         ),
                         _buildInfoRow(
                           Icons.calendar_today_outlined,
                           'สมัครใช้งานวันที่',
-                          userData['registerDate'] ?? 'ไม่ระบุ',
+                          _formatDate(userData['user']?['created_at']),
                         ),
                       ],
                     ),
@@ -213,12 +236,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       children: [
                         _buildIncomeRow(
                           'รายรับหลัก',
-                          userData['mainIncome'] ?? '0.00',
+                          userData['profile']?['main_income_amount']?.toString() ?? '0.00',
                           Colors.green.shade700,
                         ),
                         _buildIncomeRow(
                           'รายรับเสริม',
-                          userData['extraIncome'] ?? '0.00',
+                          userData['profile']?['side_income_amount']?.toString() ?? '0.00',
                           Colors.blue.shade700,
                         ),
                         const Divider(
@@ -246,6 +269,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
               ),
             ),
     );
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'ไม่ระบุ';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day}/${date.month}/${date.year}';
+    } catch (e) {
+      return 'ไม่ระบุ';
+    }
   }
 
   Widget _buildInfoCard({

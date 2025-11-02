@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
--- ========================
+ ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
@@ -425,7 +425,7 @@ CREATE TABLE IF NOT EXISTS password_reset_tokens (
 -- ========================
 CREATE TABLE IF NOT EXISTS `log` (
   log_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT UNSIGNED NULL,
+  user_id BIGINT UNSIGNED NULL, -- 👈 [THE FIX] ทำให้คอลัมน์นี้สามารถเป็น NULL ได้
   actor_id BIGINT UNSIGNED NULL, -- who caused action (user/admin/system)
   actor_type ENUM('user','admin','system','api') NOT NULL DEFAULT 'user',
   table_name VARCHAR(128) NULL,
@@ -440,7 +440,7 @@ CREATE TABLE IF NOT EXISTS `log` (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   CONSTRAINT fk_log_user FOREIGN KEY (user_id) REFERENCES users(user_id)
-    ON DELETE SET NULL ON UPDATE CASCADE
+    ON DELETE SET NULL ON UPDATE CASCADE -- 👈 เมื่อ user ถูกลบ ให้ตั้งค่าใน log เป็น NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX ix_log_user ON `log` (user_id);

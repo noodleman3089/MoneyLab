@@ -65,7 +65,7 @@ export default function AdminMainPage() {
 
             {/* ปุ่มที่ 3: ประวัติการใช้งาน (Logs) */}
             <MenuButton
-              href="/admin/logs" // (สมมติว่าหน้านี้จะถูกสร้างในอนาคต)
+              href="/admin/log"
               icon={<FaHistory />}
               title="ประวัติการใช้งาน (Logs)"
               description="ตรวจสอบการกระทำต่างๆ ที่เกิดขึ้นในระบบโดยผู้ใช้และผู้ดูแล"

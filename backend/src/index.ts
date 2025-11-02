@@ -83,8 +83,8 @@ export function query(sql: string, params: any[] = []): Promise<any> {
 }
 
 // --- [THE FIX] จัดการ Routes ทั้งหมดให้เป็นระเบียบ ---
-app.use('/api', [loginControllers, resetPasswordRoutes, AdminControllers]); // 👈 1. เอา registerControllers ออกจากกลุ่มนี้
-app.use('/api/auth', registerControllers); // 👈 2. กำหนด Path ที่ถูกต้องให้ registerControllers โดยเฉพาะ
+app.use('/api', [loginControllers, resetPasswordRoutes, AdminControllers, loginControllers]); // 👈 1. เอา registerControllers ออกจากกลุ่มนี้
+app.use('/api/auth', registerControllers); 
 app.use('/api/profile', profileRoutes);
 app.use('/api/transactions-ocr', transactionsOCR); // แก้ Path ให้ถูกต้อง
 app.use('/api/transactions', transactionRoutes);

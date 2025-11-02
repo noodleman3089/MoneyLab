@@ -43,12 +43,12 @@ routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
 
     if (actor) {
       await logActivity({
-        user_id: 0,
+        user_id: null, // 👈 [THE FIX] เปลี่ยนจาก 0 เป็น null
         actor_id: actor.user_id,
         actor_type: 'admin',
         action: 'VIEW_ALL_USERS',
-        table_name: 'users',
-        record_id: 0,
+        table_name: 'users', // ระบุตารางที่เกี่ยวข้อง
+        record_id: null, // ไม่ได้เจาะจง record ใด
         description: `Admin ${actor.username} fetched user list (Limit: ${safeLimit}, Offset: ${offset}, Role: ${role || 'all'}).`,
         req: req
       });
@@ -71,7 +71,7 @@ routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
     const actor = req.user; // ดึง actor จาก req
     
     await logActivity({
-      user_id: 0,
+      user_id: null, // 👈 [THE FIX] เปลี่ยนจาก 0 เป็น null
       actor_id: actor?.user_id || 0, // 👈 ใช้ ?. ป้องกัน actor เป็น undefined
       actor_type: 'system',
       action: 'VIEW_ALL_USERS_EXCEPTION',
@@ -274,7 +274,7 @@ routerA.get('/dashboard/summary', verifyAdmin, async (req: AuthRequest, res: Res
     const [newUsersToday] = await query("SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = CURDATE()");
 
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor.user_id,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_SUMMARY',
@@ -295,7 +295,7 @@ routerA.get('/dashboard/summary', verifyAdmin, async (req: AuthRequest, res: Res
     });
   } catch (err: any) {
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor?.user_id || 0,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_SUMMARY_EXCEPTION',
@@ -326,7 +326,7 @@ routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: AuthRequest, re
     const data = await query(sql, []);
 
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor.user_id,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_EXPENSE_CHART',
@@ -338,7 +338,7 @@ routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: AuthRequest, re
     res.json({ status: true, data });
   } catch (err: any) {
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor?.user_id || 0,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_EXPENSE_CHART_EXCEPTION',
@@ -367,7 +367,7 @@ routerA.get('/dashboard/income-chart', verifyAdmin, async (req: AuthRequest, res
     `;
     const data = await query(sql, []);
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor.user_id,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_INCOME_CHART',
@@ -379,7 +379,7 @@ routerA.get('/dashboard/income-chart', verifyAdmin, async (req: AuthRequest, res
     res.json({ status: true, data });
   } catch (err: any) {
     await logActivity({
-      user_id: 0,
+      user_id: null,
       actor_id: actor?.user_id || 0,
       actor_type: 'admin',
       action: 'VIEW_DASHBOARD_INCOME_CHART_EXCEPTION',

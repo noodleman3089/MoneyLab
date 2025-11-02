@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
+
+import '../services/authe_service.dart'; // 👈 1. Import service
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -13,7 +13,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController _identifierController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
+  bool _isLoading = false;  final AutheService _authService = AutheService(); // 👈 2. สร้าง instance ของ service
 
   @override
   void dispose() {
@@ -23,7 +23,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   // ฟังก์ชันสำหรับส่ง request ไปยัง API forgot-password
   Future<void> _resetPassword() async {
-    // ตรวจสอบว่ามีข้อมูลหรือไม่
+    // ตรวจสอบว่ามีข้อมูลหรือไม่ (เหมือนเดิม)
     if (_identifierController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -39,18 +39,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:5000/api/forgotpassword'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'identifier': _identifierController.text.trim(),
-        }),
-      );
-
-      final result = jsonDecode(response.body);
+      // 👈 3. [REFACTORED] เรียกใช้ service แทนการยิง API ตรงๆ
+      final result = await _authService.forgotPassword(_identifierController.text.trim());
 
       if (!mounted) return;
-
+      // การจัดการผลลัพธ์ยังคงเหมือนเดิม
       if (result['status'] == true) {
         // สำเร็จ - แสดงข้อความและกลับไปหน้า login
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,10 +72,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      print('Forgot password error: $error');
+      // 👈 4. [REFACTORED] แสดงข้อความ error ที่โยนมาจาก service
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Network error. Please check your connection and try again.'),
+        SnackBar(
+          content: Text(error.toString().replaceFirst("Exception: ", "")),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),
