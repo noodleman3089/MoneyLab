@@ -50,7 +50,7 @@ class _SelectCategoryPageState extends State<SelectCategoryPage> {
           'เลือกหมวดหมู่',
           style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: const Color(0xFF14B8A6),
+        backgroundColor: const Color(0xFF14B8A6), // This is good, no change needed but confirming.
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _categoriesFuture,
@@ -59,7 +59,20 @@ class _SelectCategoryPageState extends State<SelectCategoryPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return Center(child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('เกิดข้อผิดพลาด: ${snapshot.error}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => setState(() {
+                      _categoriesFuture = _transactionService.fetchCategories(widget.transactionType);
+                    }),
+                    child: const Text('ลองอีกครั้ง'),
+                  )
+                ],
+              ));
           }
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('ไม่พบหมวดหมู่'));

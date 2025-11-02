@@ -55,6 +55,7 @@ dependencies:
 
   # Internationalization
   intl: ^0.19.0 # Added for date formatting in services
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -66,6 +67,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1 # 👈 1. เพิ่มแพ็กเกจที่นี่
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -79,9 +81,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets: # 👈 2. ประกาศให้โปรเจกรู้จักโฟลเดอร์ assets
+    - assets/icon/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -108,3 +109,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# 👈 3. เพิ่มส่วนตั้งค่าสำหรับ flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21 # optional

@@ -123,6 +123,7 @@ routerOCR.post(
           let predictionResult = null;
           if (ocrResult.receiver_name) {
             try {
+              // --- [THE FIX] --- เปลี่ยน Port ให้ตรงกับ Python Flask API
               const predictionResponse = await axios.post('http://127.0.0.1:5001/api/predict', {
                 user_id: userId,
                 transaction: {
@@ -162,9 +163,13 @@ routerOCR.post(
           return res.status(200).json({
             status: true,
             message: 'OCR and prediction completed. Waiting for user confirmation.',
-            ocr_data: ocrResult,
-            prediction_data: predictionResult,
-            receipt_image_url: req.file ? `uploads/${req.file.filename}` : null, // ส่ง URL รูปไปด้วย
+            // --- [THE FIX] ---
+            // ห่อหุ้มข้อมูลทั้งหมดด้วย key 'data' เพื่อให้ Frontend หาเจอ
+            data: {
+              ocr_data: ocrResult,
+              prediction_data: predictionResult,
+              receipt_image_url: req.file ? `uploads/${req.file.filename}` : null
+            }
           });
 
         } catch (err: any) {

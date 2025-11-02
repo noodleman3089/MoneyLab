@@ -59,13 +59,19 @@ routes_T.get(
         [userId, dateQuery]
       );
 
+      // 👈 [THE FIX] แปลงค่า amount ในแต่ละ transaction ให้เป็นตัวเลข
+      const formattedTransactions = transactionsResult.map((tx: any) => ({
+        ...tx,
+        amount: parseFloat(tx.amount || '0'),
+      }));
+
       // 5. ประกอบข้อมูลส่งกลับให้ Frontend
       res.json({
         status: true,
         data: {
           daily_goal: dailyGoal,
           current_spending: currentSpending,
-          transactions: transactionsResult,
+          transactions: formattedTransactions, // 👈 ส่งข้อมูลที่แปลงค่าแล้วกลับไป
         },
       });
 

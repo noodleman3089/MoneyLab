@@ -4,10 +4,14 @@ import 'package:google_fonts/google_fonts.dart';
 // 👈 1. Import service และ models ที่สร้างขึ้นใหม่
 import '../services/transaction_service.dart';
 import '../services/wallet_service.dart';
+import '../services/daily_budget_service.dart'; // 👈 Import service ใหม่
 import '../services/transaction_models.dart' as models;
 import 'widgets/daily_summary_card.dart'; // 👈 Import Widget ใหม่
 import 'widgets/daily_transaction_list.dart'; // 👈 Import Widget ใหม่
+import 'widgets/allocation_recommendation_card.dart'; // 👈 Import Widget ใหม่
+import 'widgets/add_expense_option_sheet.dart'; // 👈 Import Widget ใหม่
 import 'add_transaction_page.dart'; // 👈 Import หน้าใหม่
+import 'ocr_confirmation_page.dart'; // 👈 Import หน้า OCR
 
 // DailyManagementPage Widget (renamed from GoalPage)
 class DailyManagementPage extends StatefulWidget {
@@ -22,6 +26,7 @@ class _DailyManagementPageState extends State<DailyManagementPage>
   // 👈 2. สร้าง State สำหรับจัดการข้อมูลและสถานะการโหลด
   final TransactionService _transactionService = TransactionService();
   final WalletService _walletService = WalletService(); // 👈 สร้าง instance ของ WalletService
+  final DailyBudgetService _dailyBudgetService = DailyBudgetService(); // 👈 สร้าง instance ของ DailyBudgetService
   models.DailySummary? _dailySummary;
   double? _walletBalance; // 👈 State สำหรับเก็บยอดเงินใน Wallet
   bool _isLoading = true;
@@ -121,6 +126,79 @@ class _DailyManagementPageState extends State<DailyManagementPage>
     }
   }
 
+  // 👈 ฟังก์ชันสำหรับแสดงตัวเลือกการเพิ่มรายจ่าย
+  Future<void> _showAddExpenseOptions() async {
+    // ปิด FAB menu ก่อน
+    _toggleFab();
+
+    final result = await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddExpenseOptionSheet(),
+    );
+
+    // จัดการผลลัพธ์ที่ได้จากการเลือกใน Bottom Sheet
+    if (result == 'manual') {
+      // ถ้าเลือก 'กรอกเอง' ให้ไปหน้า AddTransactionPage
+      _navigateToAddTransaction('expense');
+    } else if (result == 'upload') {
+      // 👈 ถ้าเลือก 'อัปโหลด' ให้ไปหน้า OcrConfirmationPage
+      final ocrResult = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const OcrConfirmationPage(),
+          fullscreenDialog: true,
+        ),
+      );
+      // 👈 ถ้ามีการบันทึกสำเร็จ (pop กลับมาพร้อมค่า true) ให้โหลดข้อมูลใหม่
+      if (ocrResult == true) {
+        _refreshData();
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกรายการจากสลิปสำเร็จ'), backgroundColor: Colors.green));
+      }
+    }
+  }
+
+  // 👈 ฟังก์ชันสำหรับแสดง Dialog ยืนยันการรีเซ็ต Wallet
+  Future<void> _showResetWalletDialog() async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('ยืนยันการรีเซ็ต', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold, color: Colors.orange.shade800)),
+          content: Text('คุณต้องการรีเซ็ตยอดเงินใน Wallet เป็น 0 หรือไม่? การดำเนินการนี้จะทำให้การคำนวณยอดคงเหลือเริ่มนับใหม่ทั้งหมด (ธุรกรรมเก่าจะไม่ถูกลบ)', style: GoogleFonts.beVietnamPro()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('ยกเลิก', style: GoogleFonts.beVietnamPro(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade700,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () async {
+                Navigator.pop(context); // ปิด Dialog ก่อน
+                try {
+                  final message = await _walletService.resetWallet();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message), backgroundColor: Colors.green),
+                  );
+                  _refreshData(); // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอ
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('เกิดข้อผิดพลาด: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              },
+              child: Text('ยืนยันการรีเซ็ต', style: GoogleFonts.beVietnamPro(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // 👈 ฟังก์ชันสำหรับแสดง Dialog เพื่อตั้งงบประมาณใหม่
   void _showSetBudgetDialog() {
     final TextEditingController budgetController = TextEditingController();
@@ -162,7 +240,7 @@ class _DailyManagementPageState extends State<DailyManagementPage>
                 if (amount != null && amount >= 0) {
                   Navigator.pop(context); // ปิด Dialog ก่อน
                   try {
-                    await _transactionService.setDailyBudget(amount: amount, date: DateTime.now());
+                    await _dailyBudgetService.setDailyBudget(amount: amount, date: DateTime.now()); // 👈 เปลี่ยนไปใช้ Service ใหม่
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('ตั้งงบประมาณสำเร็จ'), backgroundColor: Colors.green),
                     );
@@ -256,7 +334,12 @@ class _DailyManagementPageState extends State<DailyManagementPage>
                             walletBalance: walletBalance,
                             progress: progress,
                             onEditBudget: _showSetBudgetDialog,
+                            onResetWallet: _showResetWalletDialog, // 👈 ส่งฟังก์ชันไปที่ Card
                           ),
+                          const SizedBox(height: 20),
+                          // 👈 แสดงการ์ดแนะนำการจัดสรรเงิน
+                          if (dailyGoal > 0) // แสดงก็ต่อเมื่อมีการตั้งงบแล้ว
+                            AllocationRecommendationCard(dailyBudget: dailyGoal),
                           const SizedBox(height: 20),
                           // 👈 ใช้ Widget ที่แยกออกมา
                           DailyTransactionList(transactions: dailyTransactions),
@@ -361,7 +444,7 @@ class _DailyManagementPageState extends State<DailyManagementPage>
                           mini: true,
                           backgroundColor: Colors.red,
                           onPressed: () {
-                            _navigateToAddTransaction('expense');
+                            _showAddExpenseOptions();
                           },
                           child: const Icon(Icons.remove, color: Colors.white),
                         ),

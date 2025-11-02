@@ -16,7 +16,8 @@ import walletRouter from './routes/wallet';
 import savingTransactionRoutes from './routes/saving_transactions';
 import surveyRouter from './routes/survey';
 import notificationRoutes from './routes/notifications';
-import lookupsRouter from './routes/lookups'; // 👈 เพิ่มบรรทัดนี้
+import lookupsRouter from './routes/lookups';
+import routerCat from './routes/categories';
 //Controllers
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
@@ -99,6 +100,7 @@ app.use('/api/saving-transactions', savingTransactionRoutes);
 app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตัวแปรที่ import มา
 app.use('/api/wallet', walletRouter);
 app.use('/api/users', usersController); 
+app.use('/api/categories', routerCat);
 
 // Start Web server
 app.listen(PORT, () => {
