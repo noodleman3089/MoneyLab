@@ -32,8 +32,28 @@ controllers_L.post('/login',
       return res.status(401).json({ status: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
+    if (!user.password_hash) {
+      await logActivity({
+          user_id: user.user_id,
+          actor_id: user.user_id,
+          actor_type: 'user', // (Role อะไรก็ได้เพราะยังไงก็ล็อกอินไม่ผ่าน)
+          action: 'LOGIN_FAIL_SUSPENDED',
+          table_name: 'users',
+          record_id: user.user_id,
+          description: `Login attempt by suspended user: ${user.username}.`,
+          req: req
+      });
+      // 403 Forbidden = เข้าใจคำขอ แต่ไม่อนุญาต
+      return res.status(403).send({ message: 'บัญชีนี้ถูกระงับการใช้งาน', status: false }); 
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     
+    const dbRole: string = user.role;
+    const tokenRole: ActorRoleType = (dbRole === 'admin' || dbRole === 'system' || dbRole === 'api') 
+                                      ? dbRole 
+                                      : 'user';
+
     if (!isPasswordValid) {
       await logActivity({
         user_id: user.user_id, // User ที่พยายาม Login
@@ -53,18 +73,13 @@ controllers_L.post('/login',
     await logActivity({
       user_id: user.user_id,
       actor_id: user.user_id,
-      actor_type: user.role,
+      actor_type: tokenRole,
       action: 'LOGIN_SUCCESS',
       table_name: 'users',
       record_id: user.user_id,
       description: `User ${user.username} logged in.`,
       req: req
     });
-
-    const dbRole: string = user.role;
-    const tokenRole: ActorRoleType = (dbRole === 'admin' || dbRole === 'system' || dbRole === 'api') 
-                                      ? dbRole 
-                                      : 'user';
 
     const token = jwt.sign(
       { user_id: user.user_id, username: user.username, role: tokenRole },
@@ -95,11 +110,11 @@ controllers_L.post('/login',
 
   } catch (err: any) {
     await logActivity({
-        user_id: 0, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
-        actor_id: 0,
+        user_id: null, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
+        actor_id: null,
         actor_type: 'system',
         action: 'LOGIN_EXCEPTION',
-        description: `Login process failed with error: ${err.message}`,
+        description: `Login exception for attempt [${username || 'N/A'}]. Error: ${err.message}`,
         req: req,
         new_value: { error: err.stack } // เก็บ stack trace
       });

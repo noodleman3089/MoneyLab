@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import './cronJobs';
 //Routes
-import  recommendationRoutes  from './routes/recommendation.routes';
+import recommendationRoutes  from './routes/recommendation.routes';
 import resetPasswordRoutes from './routes/reset_password';
 import profileRoutes from './routes/profile';
 import transactionRoutes from './routes/transactions';
@@ -21,6 +21,7 @@ import lookupsRouter from './routes/lookups'; // 👈 เพิ่มบรร�
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
 import AdminControllers from './controllers/admin';
+import usersController from './controllers/users';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -97,6 +98,7 @@ app.use('/api/saving-goals', savingGoalsRoutes);
 app.use('/api/saving-transactions', savingTransactionRoutes);
 app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตัวแปรที่ import มา
 app.use('/api/wallet', walletRouter);
+app.use('/api/users', usersController); 
 
 // Start Web server
 app.listen(PORT, () => {

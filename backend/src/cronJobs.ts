@@ -1,16 +1,10 @@
 import cron from 'node-cron';
 import { query } from './index';
 import { sendEmail } from './sendEmail/sendEmail';
+import { logActivity } from './services/log.service';
 
 console.log('🚀 Cron job service started...');
 
-/**
- * 🕒 Job: ตรวจรอบการออมทุกวันตอนเที่ยงคืน
- * - หักเงินจาก wallet ตาม contribution_amount
- * - อัปเดต saving_goals.current_amount
- * - อัปเดต totalSavingOut ใน wallet
- * - คำนวณวันถัดไปตาม frequency
- */
 cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minute for production use '0 0 * * *'
   console.log('⏰ Running auto saving deduction job...');
 
@@ -23,16 +17,19 @@ cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minu
       FROM saving_goals g
       JOIN wallet w ON g.wallet_id = w.wallet_id
       WHERE g.status = 'active'
+        AND (g.next_deduction_date IS NOT NULL AND g.next_deduction_date <= CURDATE())
     `);
 
     if (goals.length === 0) {
-      console.log('ℹ️ No active saving goals found.');
+      console.log('No active saving goals due for deduction today.');
       return;
     }
+    console.log(`Found ${goals.length} goals to process...`);
 
     for (const goal of goals) {
       const {
         goal_id,
+        user_id,
         wallet_id,
         goal_name,
         contribution_amount,
@@ -42,25 +39,21 @@ cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minu
         target_amount
       } = goal;
 
-      // ✅ ตรวจรอบตาม frequency
-      const now = new Date();
-      let shouldDeduct = false;
-
-      switch (frequency) {
-        case 'daily': shouldDeduct = true; break;
-        case 'weekly': shouldDeduct = now.getDay() === 1; break; // ทุกวันจันทร์
-        case 'monthly': shouldDeduct = now.getDate() === 1; break; // ทุกวันที่ 1
-        case 'one-time': shouldDeduct = true; break;
-      }
-
-      if (!shouldDeduct) continue;
-
       const balanceNum = parseFloat(wallet_balance);
       const contributionNum = parseFloat(contribution_amount);
 
-      // ❌ เงินไม่พอ
+      // เงินไม่พอ
       if (balanceNum < contributionNum) {
         console.warn(`⚠️ Wallet ${wallet_id} ไม่มีเงินพอหัก ${contributionNum}`);
+        await logActivity({
+            user_id: user_id,
+            actor_id: null,
+            actor_type: 'system',
+            action: 'AUTODEDUCT_FAIL_INSUFFICIENT_FUNDS',
+            table_name: 'wallet',
+            record_id: wallet_id,
+            description: `Auto-deduct failed for goal '${goal_name}': Insufficient funds.`
+        });
         continue;
       }
 
@@ -70,18 +63,22 @@ cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minu
          SET balance = balance - ?,
              updated_at = NOW()
          WHERE wallet_id = ?`,
-        [contribution_amount, wallet_id]
+        [contributionNum, wallet_id]
       );
 
       // ✅ เพิ่มยอดใน saving goal
-      const newAmount = parseFloat(current_amount) + parseFloat(contribution_amount);
+      const newAmount = parseFloat(current_amount) + contributionNum;
       const newStatus = newAmount >= target_amount ? 'completed' : 'active';
 
       // ✅ กำหนดวันถัดไป
       let nextDate: Date | null = null;
-      if (frequency === 'daily') nextDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-      else if (frequency === 'weekly') nextDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      else if (frequency === 'monthly') nextDate = new Date(new Date().setMonth(new Date().getMonth() + 1));
+      const now = new Date();
+      if (newStatus === 'active') {
+        if (frequency === 'daily') nextDate = new Date(now.setDate(now.getDate() + 1));
+        else if (frequency === 'weekly') nextDate = new Date(now.setDate(now.getDate() + 7));
+        else if (frequency === 'monthly') nextDate = new Date(now.setMonth(now.getMonth() + 1));
+        // (ถ้า one-time หรือ completed, nextDate จะเป็น null)
+      }
 
       // ✅ อัปเดต goal
       await query(
@@ -94,13 +91,24 @@ cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minu
          WHERE goal_id = ?`,
         [newAmount, newStatus, nextDate, newStatus, goal_id]
       );
-
-      await query(
+      const result: any = await query(
         `INSERT INTO saving_transactions 
-        (user_id, wallet_id, goal_id, amount, status, transaction_date) 
-        VALUES (?, ?, ?, ?, 'completed', NOW())`,
-        [goal.user_id, wallet_id, goal_id, contribution_amount]
+         (user_id, wallet_id, goal_id, amount, status, transaction_date) 
+         VALUES (?, ?, ?, ?, 'completed', NOW())`,
+        [user_id, wallet_id, goal_id, contributionNum]
       );
+      const newTxId = result.insertId;
+
+      await logActivity({
+          user_id: user_id,
+          actor_id: null,
+          actor_type: 'system',
+          action: 'CREATE_SAVING_AUTODEDUCT',
+          table_name: 'saving_transactions',
+          record_id: newTxId,
+          description: `Auto-deduct success for goal '${goal_name}': ${contributionNum}.`,
+          new_value: { goal_id, amount: contributionNum, newAmount, newStatus }
+      });
 
       await query(
         `INSERT INTO notifications 
@@ -132,7 +140,15 @@ cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minu
     console.log(`✅ Goal "${goal_name}" updated (+${contribution_amount}), wallet_id=${wallet_id}`);
     }
     console.log('✅ Cron job finished successfully.');
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: null,
+        actor_id: null,
+        actor_type: 'system',
+        action: 'AUTODEDUCT_EXCEPTION',
+        description: `Cron job auto-deduct failed. Error: ${err.message}`,
+        new_value: { error: err.stack }
+    });
     console.error('❌ Cron job error:', err);
   }
 });
