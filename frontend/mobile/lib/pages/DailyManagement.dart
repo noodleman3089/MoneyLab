@@ -1,528 +1,391 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
+
+// 👈 1. Import service และ models ที่สร้างขึ้นใหม่
+import '../services/transaction_service.dart';
+import '../services/wallet_service.dart';
+import '../services/transaction_models.dart' as models;
+import 'widgets/daily_summary_card.dart'; // 👈 Import Widget ใหม่
+import 'widgets/daily_transaction_list.dart'; // 👈 Import Widget ใหม่
+import 'add_transaction_page.dart'; // 👈 Import หน้าใหม่
 
 // DailyManagementPage Widget (renamed from GoalPage)
 class DailyManagementPage extends StatefulWidget {
   const DailyManagementPage({super.key});
 
   @override
-  State<DailyManagementPage> createState() => _DailyManagementPageState();
+  State<DailyManagementPage> createState() => _DailyManagementPageState(); // แก้ไขชื่อ State
 }
 
-class _DailyManagementPageState extends State<DailyManagementPage> {
-  double dailyGoal = 500;
-  double currentSpending = 150;
-  List<Map<String, dynamic>> dailyTransactions = [];
+class _DailyManagementPageState extends State<DailyManagementPage>
+    with SingleTickerProviderStateMixin {
+  // 👈 2. สร้าง State สำหรับจัดการข้อมูลและสถานะการโหลด
+  final TransactionService _transactionService = TransactionService();
+  final WalletService _walletService = WalletService(); // 👈 สร้าง instance ของ WalletService
+  models.DailySummary? _dailySummary;
+  double? _walletBalance; // 👈 State สำหรับเก็บยอดเงินใน Wallet
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  // State สำหรับ UI (Animation)
+  bool _isFabOpen = false;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
 
   @override
-  Widget build(BuildContext context) {
-    double progress = currentSpending / dailyGoal;
+  void initState() {
+    super.initState();
+    // 👈 3. เรียกฟังก์ชันเพื่อดึงข้อมูลจาก API เมื่อหน้าถูกโหลด
+    _fetchData();
 
-    return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Custom AppBar
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Center(
-                  child: Text (
-                    'จัดการรายวัน',
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF223248),
-                    ),
-                  ),
-                ),
-              ),
-              // Body Content
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-                      // Goal Semicircle Card
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Semicircle Section
-                            Container(
-                              padding: const EdgeInsets.symmetric(vertical: 30),
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // Semicircle background
-                                  CustomPaint(
-                                    size: const Size(280, 140),
-                                    painter: SemiCirclePainter(
-                                      color: const Color(0xFF14B8A6),
-                                      backgroundColor: const Color(0xFFC7DCDE),
-                                    ),
-                                  ),
-                                  // Text content
-                                  Positioned(
-                                    top: 40,
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'เป้าหมายการออมเงิน',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF223248),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          '${dailyGoal.toInt()} บาท / วัน',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 32,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF14B8A6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Progress bar section
-                            Container(
-                              padding: const EdgeInsets.all(24),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFF0F9F8),
-                                borderRadius: BorderRadius.only(
-                                  bottomLeft: Radius.circular(24),
-                                  bottomRight: Radius.circular(24),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'ยอดใช้จ่ายวันนี้',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF223248),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.baseline,
-                                    textBaseline: TextBaseline.alphabetic,
-                                    children: [
-                                      Text(
-                                        currentSpending.toInt().toString(),
-                                        style: GoogleFonts.beVietnamPro(
-                                          fontSize: 48,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF14B8A6),
-                                          height: 1,
-                                        ),
-                                      ),
-                                      Text(
-                                        ' / ${dailyGoal.toInt()} บาท',
-                                        style: GoogleFonts.beVietnamPro(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w500,
-                                          color: const Color(0xFF666666),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  // Progress bar
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: LinearProgressIndicator(
-                                      value: progress.clamp(0.0, 1.0),
-                                      minHeight: 14,
-                                      backgroundColor: Colors.white,
-                                      valueColor: const AlwaysStoppedAnimation<Color>(
-                                        Color(0xFF14B8A6),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'คงเหลือ ${(dailyGoal - currentSpending).toInt()} บาท',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 14,
-                                      color: const Color(0xFF666666),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      // Daily Transactions Section
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            // Header
-                            Container(
-                              padding: const EdgeInsets.all(20),
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Color(0xFF14B8A6), Color(0xFF4FB7B3)],
-                                ),
-                                borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(24),
-                                  topRight: Radius.circular(24),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'การใช้จ่ายประจำวันนี้',
-                                    style: GoogleFonts.beVietnamPro(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: IconButton(
-                                      icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
-                                      onPressed: () {
-                                        _showAddTransactionDialog(context);
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Transaction List
-                            dailyTransactions.isEmpty
-                                ? Container(
-                                    padding: const EdgeInsets.all(40),
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(20),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF0F9F8),
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          child: const Icon(
-                                            Icons.receipt_long_outlined,
-                                            size: 64,
-                                            color: Color(0xFF14B8A6),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        Text(
-                                          'ยังไม่มีรายการใช้จ่ายวันนี้',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 16,
-                                            color: const Color(0xFF666666),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'เพิ่มรายการเพื่อติดตามการใช้จ่าย',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 14,
-                                            color: const Color(0xFF999999),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
-                                : ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: dailyTransactions.length,
-                                    separatorBuilder: (context, index) => const Divider(
-                                      height: 1,
-                                      color: Color(0xFFF0F0F0),
-                                    ),
-                                    itemBuilder: (context, index) {
-                                      final transaction = dailyTransactions[index];
-                                      return ListTile(
-                                        contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 20,
-                                          vertical: 12,
-                                        ),
-                                        leading: Container(
-                                          width: 50,
-                                          height: 50,
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [Color(0xFF14B8A6), Color(0xFF4FB7B3)],
-                                            ),
-                                            borderRadius: BorderRadius.circular(14),
-                                          ),
-                                          child: Icon(
-                                            _getCategoryIcon(transaction['category']),
-                                            color: Colors.white,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        title: Text(
-                                          transaction['description'],
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 16,
-                                            color: const Color(0xFF223248),
-                                          ),
-                                        ),
-                                        subtitle: Text(
-                                          transaction['category'],
-                                          style: GoogleFonts.beVietnamPro(
-                                            color: const Color(0xFF999999),
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                        trailing: Text(
-                                          '${transaction['amount']} ฿',
-                                          style: GoogleFonts.beVietnamPro(
-                                            fontSize: 18,
-                                            fontWeight: FontWeight.bold,
-                                            color: const Color(0xFF14B8A6),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _animation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
     );
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category) {
-      case 'อาหาร':
-        return Icons.restaurant;
-      case 'ช้อปปิ้ง':
-        return Icons.shopping_bag;
-      case 'เดินทาง':
-        return Icons.directions_car;
-      case 'บันเทิง':
-        return Icons.movie;
-      default:
-        return Icons.payment;
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // 👈 4. ฟังก์ชันสำหรับดึงข้อมูลจาก API
+  Future<void> _fetchData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // ใช้ Future.wait เพื่อดึงข้อมูล 2 ส่วนพร้อมกัน
+      final results = await Future.wait([
+        _transactionService.fetchDailySummary(DateTime.now()),
+        _walletService.fetchWalletBalance(),
+      ]);
+
+      final summary = results[0] as models.DailySummary;
+      final balance = results[1] as double;
+
+      if (mounted) {
+        setState(() {
+          _dailySummary = summary;
+          _walletBalance = balance; // 👈 เก็บค่า balance ที่ได้มา
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll("Exception: ", "");
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _showAddTransactionDialog(BuildContext context) {
-    final TextEditingController descController = TextEditingController();
-    final TextEditingController amountController = TextEditingController();
-    String selectedCategory = 'อาหาร';
+  // 👈 5. ฟังก์ชันสำหรับ Refresh ข้อมูล (ใช้หลังเพิ่มรายการสำเร็จ)
+  void _refreshData() {
+    _fetchData();
+  }
+
+  void _toggleFab() {
+    setState(() {
+      _isFabOpen = !_isFabOpen;
+      if (_isFabOpen) {
+        _animationController.forward();
+      } else {
+        _animationController.reverse();
+      }
+    });
+  }
+
+  // 👈 ฟังก์ชันสำหรับนำทางไปยังหน้าเพิ่มรายการ
+  Future<void> _navigateToAddTransaction(String type) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddTransactionPage(transactionType: type),
+        fullscreenDialog: true, // ทำให้หน้าจอลอยขึ้นมาจากข้างล่าง
+      ),
+    );
+
+    // ถ้ามีการบันทึกสำเร็จ (pop กลับมาพร้อมค่า true) ให้โหลดข้อมูลใหม่
+    if (result == true) {
+      _refreshData();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('บันทึกรายการสำเร็จ'), backgroundColor: Colors.green));
+    }
+  }
+
+  // 👈 ฟังก์ชันสำหรับแสดง Dialog เพื่อตั้งงบประมาณใหม่
+  void _showSetBudgetDialog() {
+    final TextEditingController budgetController = TextEditingController();
+    // แสดงค่าปัจจุบันในช่องกรอก
+    budgetController.text = (_dailySummary?.dailyGoal ?? 0).toInt().toString();
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            'เพิ่มรายการใช้จ่าย',
-            style: GoogleFonts.beVietnamPro(
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF223248),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('ตั้งงบประมาณรายวัน', style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: budgetController,
+            keyboardType: TextInputType.number,
+            style: GoogleFonts.beVietnamPro(),
+            decoration: InputDecoration(
+              labelText: 'งบประมาณ (บาท)',
+              labelStyle: GoogleFonts.beVietnamPro(),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 2),
+              ),
             ),
-          ),
-          content: StatefulBuilder(
-            builder: (BuildContext context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: selectedCategory,
-                    decoration: InputDecoration(
-                      labelText: 'หมวดหมู่',
-                      labelStyle: GoogleFonts.beVietnamPro(),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 2),
-                      ),
-                    ),
-                    items: ['อาหาร', 'ช้อปปิ้ง', 'เดินทาง', 'บันเทิง', 'อื่นๆ']
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(cat, style: GoogleFonts.beVietnamPro()),
-                            ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedCategory = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: descController,
-                    style: GoogleFonts.beVietnamPro(),
-                    decoration: InputDecoration(
-                      labelText: 'รายละเอียด',
-                      labelStyle: GoogleFonts.beVietnamPro(),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: amountController,
-                    style: GoogleFonts.beVietnamPro(),
-                    decoration: InputDecoration(
-                      labelText: 'จำนวนเงิน',
-                      labelStyle: GoogleFonts.beVietnamPro(),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xFF14B8A6), width: 2),
-                      ),
-                      suffixText: 'บาท',
-                    ),
-                    keyboardType: TextInputType.number,
-                  ),
-                ],
-              );
-            },
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text(
-                'ยกเลิก',
-                style: GoogleFonts.beVietnamPro(
-                  color: const Color(0xFF666666),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              child: Text('ยกเลิก', style: GoogleFonts.beVietnamPro(color: Colors.grey)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF14B8A6),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () {
-                if (descController.text.isNotEmpty &&
-                    amountController.text.isNotEmpty) {
-                  setState(() {
-                    dailyTransactions.add({
-                      'category': selectedCategory,
-                      'description': descController.text,
-                      'amount': double.parse(amountController.text),
-                    });
-                    currentSpending += double.parse(amountController.text);
-                  });
-                  Navigator.pop(context);
+              onPressed: () async {
+                final amount = double.tryParse(budgetController.text);
+                if (amount != null && amount >= 0) {
+                  Navigator.pop(context); // ปิด Dialog ก่อน
+                  try {
+                    await _transactionService.setDailyBudget(amount: amount, date: DateTime.now());
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('ตั้งงบประมาณสำเร็จ'), backgroundColor: Colors.green),
+                    );
+                    _refreshData(); // โหลดข้อมูลใหม่เพื่ออัปเดตหน้าจอ
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('เกิดข้อผิดพลาด: $e'), backgroundColor: Colors.red),
+                    );
+                  }
                 }
               },
-              child: Text(
-                'เพิ่ม',
-                style: GoogleFonts.beVietnamPro(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: Text('บันทึก', style: GoogleFonts.beVietnamPro(color: Colors.white)),
             ),
           ],
         );
       },
     );
   }
-}
-
-// Custom Painter for Semicircle
-class SemiCirclePainter extends CustomPainter {
-  final Color color;
-  final Color backgroundColor;
-
-  SemiCirclePainter({
-    required this.color,
-    required this.backgroundColor,
-  });
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final Paint bgPaint = Paint()
-      ..color = backgroundColor.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
+  Widget build(BuildContext context) {
+    // 👈 6. ใช้ข้อมูลจาก State ที่ดึงมาจาก API
+    final double dailyGoal = _dailySummary?.dailyGoal ?? 0;
+    final double currentSpending = _dailySummary?.currentSpending ?? 0;
+    final List<models.Transaction> dailyTransactions = _dailySummary?.transactions ?? [];
+    final double walletBalance = _walletBalance ?? 0; // 👈 ดึงค่า wallet balance มาใช้
+    final double progress = (dailyGoal > 0) ? (currentSpending / dailyGoal) : 0;
 
-    final Paint paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 10;
-
-    final Rect rect = Rect.fromLTWH(0, 0, size.width, size.height * 2);
-
-    // Draw background semicircle
-    canvas.drawArc(rect, 3.14, 3.14, false, bgPaint);
-
-    // Draw border semicircle
-    canvas.drawArc(rect, 3.14, 3.14, false, paint);
+    return Scaffold(
+      body: Stack(
+        children: [
+          // Main Content
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Custom AppBar
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Center(
+                      child: Text(
+                        'จัดการรายวัน',
+                        style: GoogleFonts.beVietnamPro(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF223248),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Body Content
+                  Expanded( // 👈 7. จัดการ UI ตามสถานะการโหลดและ Error
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                        : _errorMessage != null
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'เกิดข้อผิดพลาด: $_errorMessage',
+                                        style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 16),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      ElevatedButton(
+                                        onPressed: _fetchData,
+                                        child: const Text('ลองอีกครั้ง'),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : SingleChildScrollView(
+                                child: Column(
+                                  children: [
+                          const SizedBox(height: 8),
+                          // 👈 ใช้ Widget ที่แยกออกมา
+                          DailySummaryCard(
+                            dailyGoal: dailyGoal,
+                            currentSpending: currentSpending,
+                            walletBalance: walletBalance,
+                            progress: progress,
+                            onEditBudget: _showSetBudgetDialog,
+                          ),
+                          const SizedBox(height: 20),
+                          // 👈 ใช้ Widget ที่แยกออกมา
+                          DailyTransactionList(transactions: dailyTransactions),
+                          const SizedBox(height: 100), // Space for FAB
+                        ],
+                      ), // ปิด SingleChildScrollView
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // FAB Backdrop
+          if (_isFabOpen)
+            GestureDetector(
+              onTap: _toggleFab,
+              child: Container(
+                color: Colors.black.withOpacity(0.5),
+              ),
+            ),
+          // Speed Dial FAB
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // รายรับ Button
+                ScaleTransition(
+                  scale: _animation,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'รายรับ',
+                            style: GoogleFonts.beVietnamPro(
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF223248),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FloatingActionButton(
+                          heroTag: 'income',
+                          mini: true,
+                          backgroundColor: Colors.green,
+                          onPressed: () {
+                            _navigateToAddTransaction('income');
+                          },
+                          child: const Icon(Icons.add, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // รายจ่าย Button
+                ScaleTransition(
+                  scale: _animation,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            'รายจ่าย',
+                            style: GoogleFonts.beVietnamPro(
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF223248),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FloatingActionButton(
+                          heroTag: 'expense',
+                          mini: true,
+                          backgroundColor: Colors.red,
+                          onPressed: () {
+                            _navigateToAddTransaction('expense');
+                          },
+                          child: const Icon(Icons.remove, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Main FAB
+                FloatingActionButton(
+                  heroTag: 'main',
+                  backgroundColor: const Color(0xFF14B8A6),
+                  onPressed: _toggleFab,
+                  child: AnimatedIcon(
+                    icon: AnimatedIcons.menu_close,
+                    progress: _animation,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

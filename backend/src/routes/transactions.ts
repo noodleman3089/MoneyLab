@@ -8,6 +8,75 @@ import moment from 'moment-timezone';
 
 const routes_T = express.Router();
 
+/* ------------------ GET: ดึงข้อมูลสรุปรายวัน ------------------ */
+routes_T.get(
+  '/daily',
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+    const userId = actor.user_id;
+
+    // 1. รับวันที่จาก query string (เช่น '2025-11-03')
+    const dateQuery = req.query.date as string;
+    if (!dateQuery || !/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
+      return res.status(400).json({ status: false, message: 'Invalid or missing date query parameter. Use YYYY-MM-DD format.' });
+    }
+
+    try {
+      // 2. ดึงงบประมาณรายวัน (Daily Goal)
+      const budgetResult = await query(
+        'SELECT target_spend FROM daily_budget WHERE user_id = ? AND budget_date = ? LIMIT 1',
+        [userId, dateQuery]
+      );
+      const dailyGoal = parseFloat(budgetResult[0]?.target_spend || '0');
+
+      // 3. คำนวณยอดใช้จ่ายรวมของวันนั้น (Current Spending)
+      const spendingResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) AS total_spent 
+         FROM transactions 
+         WHERE user_id = ? AND type = 'expense' AND DATE(transaction_date) = ?`,
+        [userId, dateQuery]
+      );
+      const currentSpending = parseFloat(spendingResult[0]?.total_spent || '0');
+
+      // 4. ดึงรายการธุรกรรมทั้งหมดของวันนั้น
+      const transactionsResult = await query(
+        `SELECT 
+           t.transaction_id,
+           t.receiver_name,
+           t.sender_name,
+           c.category_name,
+           t.amount,
+           t.type,
+           t.transaction_date
+         FROM transactions t
+         LEFT JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ? AND DATE(t.transaction_date) = ?
+         ORDER BY t.transaction_date DESC`,
+        [userId, dateQuery]
+      );
+
+      // 5. ประกอบข้อมูลส่งกลับให้ Frontend
+      res.json({
+        status: true,
+        data: {
+          daily_goal: dailyGoal,
+          current_spending: currentSpending,
+          transactions: transactionsResult,
+        },
+      });
+
+    } catch (err: any) {
+      console.error('Error fetching daily summary:', err);
+      logActivity({ user_id: userId, actor_id: userId, actor_type: 'system', action: 'FETCH_DAILY_SUMMARY_EXCEPTION', description: `Error: ${err.message}`, req });
+      res.status(500).json({ status: false, message: 'Database error while fetching daily summary.' });
+    }
+  }
+);
+
 /* ------------------ POST: เพิ่มรายการใหม่ ------------------ */
 routes_T.post(
   '/',
