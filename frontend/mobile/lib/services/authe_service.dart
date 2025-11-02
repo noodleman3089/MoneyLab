@@ -6,7 +6,7 @@ class AutheService {
   // ⭐️ หมายเหตุ: URL สำหรับเชื่อมต่อ API
   // ถ้าทดสอบบน Web/Desktop: ใช้ 'http://localhost:5000/api/auth'
   // ถ้าทดสอบบน Android Emulator: ต้องใช้ 'http://10.0.2.2:5000/api/auth'
-  static const String _baseUrl = 'http://localhost:5000/api/auth';
+  static const String _baseUrl = 'http://localhost:5000';
 
   static const Map<String, String> _headers = {
     'Content-Type': 'application/json',
@@ -20,7 +20,7 @@ class AutheService {
   Future<Map<String, dynamic>> login(String username, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/login'), // ชี้ไปที่ endpoint /login
+        Uri.parse('$_baseUrl/api/login'), // ชี้ไปที่ endpoint /login
         headers: _headers,
         body: jsonEncode({'username': username, 'password': password}),
       );
@@ -55,7 +55,7 @@ class AutheService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/register'), // ชี้ไปที่ endpoint /register
+        Uri.parse('$_baseUrl/api/auth/register'), // ชี้ไปที่ endpoint /register
         headers: _headers,
         body: jsonEncode({
           'username': username,
@@ -91,7 +91,7 @@ class AutheService {
   }) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl/verify-otp'), // ชี้ไปที่ endpoint /verify-otp
+        Uri.parse('$_baseUrl/api/auth/verify-otp'), // ชี้ไปที่ endpoint /verify-otp
         headers: _headers,
         body: jsonEncode({
           'email': email,
