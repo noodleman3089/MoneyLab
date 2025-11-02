@@ -1,51 +1,67 @@
 // 1. Importing Dependencies
 'use client' // ต้องใช้เพราะใช้ useState และ window, localStorage
 import React, { useState, FormEvent } from 'react';
-import axios from "axios";
+import { useRouter } from 'next/navigation';
+import { loginUser } from '@/app/services/authService'; // 👈 1. Import service ที่ถูกต้อง
 
 // 2. Creating and Exporting a Component
 export default function LoginPage() {
 
   // 2.1 Defining Variables, States, and Handlers
-  // สร้างตัวแปร state สำหรับเก็บ username และ password
+  const router = useRouter();
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
+  // --- State สำหรับจัดการ Loading และ Messages ---
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // สร้างฟังก์ชันสำหรับจัดการการ submit form ไปยัง API
-  // โดยใช้ async/await เพื่อจัดการกับการเรียก API แบบ asynchronous
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault() // ป้องกัน reload หน้า
+    setMessage(null);
+    setIsLoading(true);
 
     try {
-      // ใช้ axios เพื่อส่ง POST request ไปยัง API
-      const response = await axios.post("http://localhost:4000/api/login", {
+      // 👈 2. [REFACTORED] เรียกใช้ Service ที่เราสร้างไว้
+      const result = await loginUser({
         username,
         password
       });
 
-      const result = response.data // รับข้อมูลจาก API
-      alert(result.message); // แสดงข้อความจาก API
-      
-      // ถ้าเข้าสู่ระบบสำเร็จ จะเก็บ token และ redirect ไปหน้าแรก
       if (result.status === true) {
-        // localStorage.setItem('user_id', result.user_id);
-        // localStorage.setItem('token', result.token);
-        window.location.href = "/page/Main"; // เปลี่ยนเส้นทางไปยังหน้า Main
+        setMessage({ type: 'success', text: 'เข้าสู่ระบบสำเร็จ!' });
+        
+        // 👈 3. [IMPLEMENTED] บันทึก token และข้อมูลผู้ใช้
+        localStorage.setItem('token', result.token!);
+        if (result.user) {
+          localStorage.setItem('user', JSON.stringify(result.user));
+        }
+
+        
+        if (result.user?.role === 'admin') {
+          router.push('/admin/main');
+        } else {
+          router.push('/page/main'); // ไปหน้าหลักสำหรับ User
+        }
+      } else {
+        setMessage({ type: 'error', text: result.message || 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
       }
     } catch (error) {
       console.error("Login error:", error); // แสดงข้อผิดพลาดใน console
-      alert("Login failed. Please try again."); // แสดงข้อความเมื่อเข้าสู่ระบบไม่สำเร็จ
+      setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดในการเชื่อมต่อ' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า Forget_Password
   const handleForgotPassword = () => {
-    window.location.href = "/page/Forget_Password";
+    router.push("/page/Forget_Password");
   };
 
   // ฟังก์ชันสำหรับเปลี่ยนเส้นทางไปยังหน้า register
   const handleSignUp = () => {
-    window.location.href = "/page/register";
+    router.push("/page/register");
   };
 
   return (
@@ -57,6 +73,16 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           <h1 className="text-[#223248] text-5xl font-semibold mb-12 text-center font-be-vietnam-pro">Login</h1>
 
+          {/* 👈 5. [NEW] ส่วนแสดงข้อความ Success/Error */}
+          {message && (
+            <div className={`p-3 rounded-md text-center mb-6 text-white font-be-vietnam-pro ${
+              message.type === 'error' ? 'bg-red-500' : 'bg-green-500'
+            }`}
+            >
+              {message.text}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <input
               type="text"
@@ -64,7 +90,7 @@ export default function LoginPage() {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -74,15 +100,16 @@ export default function LoginPage() {
               placeholder="Passwords"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
             <button
               type="submit"
-              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-8 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md"
+              disabled={isLoading} // 👈 6. ปิดปุ่มตอนโหลด
+              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#3a9793] text-white font-bold rounded-[20px] mt-8 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Confirm
+              {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'Confirm'}
             </button>
 
             <div className="flex justify-between items-center mt-6 text-[#223248] text-sm font-be-vietnam-pro">

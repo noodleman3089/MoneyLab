@@ -34,14 +34,25 @@ routerOCR.post(
       return res.status(400).json({ status: false, message: 'No file uploaded' });
     }
 
-    const imagePath = path.resolve(req.file.path);
-    const scriptPath = path.resolve(__dirname, '../../model/ocr_module/extract_receipt.py');
+    // --- [THE FIX] ---
+    // 1. กำหนด Working Directory ของ Python script ให้เป็นโฟลเดอร์ ocr_module
+    const ocrModulePath = path.resolve(__dirname, '../../model/ocr_module');
 
-    console.log('🧠 Python script path:', scriptPath);
-    console.log('🖼️ Image path:', imagePath);
+    // 2. ใช้แค่ชื่อไฟล์ของ Python script เพราะเราจะรันจากในโฟลเดอร์นั้น
+    const scriptName = 'extract_receipt.py';
+
+    // 3. ใช้ Path ของรูปภาพที่สัมพันธ์กับ Working Directory ของ Node.js
+    const imagePath = req.file.path;
+
+    console.log('🧠 OCR Module Path (cwd):', ocrModulePath);
+    console.log('🐍 Script Name:', scriptName);
+    console.log('🖼️ Image Path:', imagePath);
 
     try {
-      const pythonProcess = spawn('python', [scriptPath, imagePath]);
+      // 4. [สำคัญ] เพิ่ม option `cwd` (Current Working Directory)
+      const pythonProcess = spawn('python', [scriptName, imagePath], {
+        cwd: ocrModulePath,
+      });
 
       let stdoutData = '';
       let stderrData = '';

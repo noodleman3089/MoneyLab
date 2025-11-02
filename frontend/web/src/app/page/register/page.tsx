@@ -1,9 +1,8 @@
 // 1. Importing Dependencies
 'use client' // ต้องใช้เพราะใช้ useState และ window, localStorage
 import React, { useState, FormEvent } from 'react'
-import axios from "axios" ;
-//import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-//import { auth } from "./firebaseConfig";
+import { useRouter } from 'next/navigation'; // 👈 1. Import useRouter สำหรับเปลี่ยนหน้า
+import { registerUser } from '@/app/services/authService'; // 👈 2. Import service ที่ถูกต้อง
 
 // 2. Creating and Exporting a Component
 export default function RegisterPage() {
@@ -11,6 +10,7 @@ export default function RegisterPage() {
   // 2.1 Defining Variables and State, and Handlers
 
   const [username, setUsername] = useState<string>("");
+  const router = useRouter(); // 👈 3. สร้าง instance ของ router
   const [email, setEmail] = useState<string>("");
   const [phone_number, setphone_number] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -18,26 +18,33 @@ export default function RegisterPage() {
   const [acceptTerms, setAcceptTerms] = useState<boolean>(false);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
+  // --- State สำหรับจัดการ Loading และ Messages ---
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // สร้างฟังก์ชันสำหรับจัดการการ submit form ไปยัง API
   // โดยใช้ async/await เพื่อจัดการกับการเรียก API แบบ asynchronous
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault(); // ป้องกัน reload หน้า
+    setMessage(null); // เคลียร์ข้อความเก่า
 
     // ตรวจสอบว่ากดติ๊กถูกที่ Terms and Conditions หรือยัง
     if (!acceptTerms) {
-      alert("กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว");
+      setMessage({ type: 'error', text: 'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว' });
       return;
     }
 
     // ตรวจสอบว่า password ตรงกับ confirmPassword หรือไม่
     if (password !== confirmPassword) {
-      alert("รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง");
+      setMessage({ type: 'error', text: 'รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน' });
       return;
     }
 
+    setIsLoading(true);
+
     try{
-      const response = await axios.post("http://localhost:4000/api/register", {
+      // 👈 4. [REFACTORED] เรียกใช้ Service ที่เราสร้างไว้
+      const result = await registerUser({
         username,
         password,
         confirmPassword,
@@ -45,54 +52,19 @@ export default function RegisterPage() {
         phone_number
       });
 
-      const result = response.data; // รับข้อมูลจาก API
-      alert(result.message); // แสดงข้อความตอบกลับจาก API
-
       if(result.status === true) {
-        alert("Registration successful! Please log in.");
-        window.location.href = "/page/login"; // เปลี่ยนเส้นทางไปยังหน้า login
+        // 👈 5. [FIXED LOGIC] ส่งไปหน้า Verify OTP พร้อมกับส่ง email ไปด้วย
+        router.push(`/page/otp?email=${encodeURIComponent(email)}`);
+      } else {
+        setMessage({ type: 'error', text: result.message || 'การลงทะเบียนล้มเหลว' });
       }
     } catch (error) {
       console.error("Registration error:", error); // แสดงข้อผิดพลาดใน console
-      alert("Registration failed. Please try again."); // แจ้งผู้ใช้ว่าการลงทะเบียนล้มเหลว
+      setMessage({ type: 'error', text: 'เกิดข้อผิดพลาดที่ไม่คาดคิด กรุณาลองอีกครั้ง' });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  // *ฟังก์ชันสำหรับจัดการการเข้าสู่ระบบด้วย Google* (โค้ดที่คิดว่าจะใช้ได้)
-  // const handleGoogleSignIn = async () => {
-  //   const provider = new GoogleAuthProvider();
-  //   try {
-  //     const result = await signInWithPopup(auth, provider);
-  //     console.log("Google sign-in user:", result.user);
-  //   }catch (error) {
-  //     console.error("Google sign-in error:", error);
-  //   }
-  // };
-
-  // โค้ดที่ AI สร้างให้ (โค้ดเก่า)
-  // const [formData, setFormData] = useState({
-  //   username: '',
-  //   email: '',
-  //   phone_number: '',
-  //   password: '',
-  //   confirmPassword: ''
-  // })
-  // const [acceptTerms, setAcceptTerms] = useState(false)
-
-  // const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const { name, value } = e.target
-  //   setFormData(prev => ({
-  //     ...prev,
-  //     [name]: value
-  //   }))
-  // }
-
-  // const handleSubmit = (e: React.FormEvent) => {
-  //   e.preventDefault()
-
-  //   // Handle registration logic here
-  //   console.log('Registration data:', formData, 'Accept terms:', acceptTerms)
-  // }
 
     // Code ชั่วคราว
   const handleGoogleSignIn = () => {
@@ -119,6 +91,16 @@ export default function RegisterPage() {
         <div className="w-full max-w-sm">
           <h1 className="text-[#223248] text-5xl font-semibold mb-8 text-center font-be-vietnam-pro">Sign Up</h1>
 
+          {/* 👈 6. [NEW] ส่วนแสดงข้อความ Success/Error */}
+          {message && (
+            <div className={`p-3 rounded-md text-center mb-4 text-white font-be-vietnam-pro ${
+              message.type === 'error' ? 'bg-red-500' : 'bg-green-500'
+            }`}
+            >
+              {message.text}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="text"
@@ -126,7 +108,7 @@ export default function RegisterPage() {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -136,7 +118,7 @@ export default function RegisterPage() {
               placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -146,7 +128,7 @@ export default function RegisterPage() {
               placeholder="Phone Numbers"
               value={phone_number}
               onChange={(e) => setphone_number(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -156,7 +138,7 @@ export default function RegisterPage() {
               placeholder="Passwords"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -166,7 +148,7 @@ export default function RegisterPage() {
               placeholder="Confirm passwords"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] focus:border-4 focus:border-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
+              className="w-full px-4 py-3 rounded-sm outline-none border-none bg-white text-black placeholder-gray-500 focus:ring-4 focus:ring-[#4FB7B3] transition-all duration-200 shadow-sm shadow-[#9CAAD6] font-be-vietnam-pro"
               required
             />
 
@@ -200,9 +182,10 @@ export default function RegisterPage() {
 
             <button
               type="submit"
-              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#C7DCDE] text-white hover:text-[#008170] font-bold rounded-[20px] hover:border-2 hover:border-[#4FB7B3] hover:shadow-none mt-6 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md"
+              disabled={isLoading} // 👈 7. ปิดปุ่มตอนโหลด
+              className="w-[155px] h-[40px] bg-[#4FB7B3] hover:bg-[#3a9793] text-white font-bold rounded-[20px] mt-6 transition-colors duration-200 font-be-vietnam-pro flex items-center justify-center mx-auto shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              Register
+              {isLoading ? 'กำลังลงทะเบียน...' : 'Register'}
             </button>
 
             <div className="text-center mt-4">

@@ -5,7 +5,7 @@ import { sendEmail } from '../sendEmail/sendEmail';
 import { query } from '../index';
 import moment from 'moment-timezone';
 
-const controllers_R = express();
+const controllers_R = express.Router();
 
 /* =============================
    1️⃣ สมัครสมาชิก (ส่ง OTP)

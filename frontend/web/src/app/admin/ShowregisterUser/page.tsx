@@ -2,12 +2,12 @@
 'use client'
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation'; // 👈 1. Import useRouter
-import { User, Pagination, UserDetails } from '../services/user.types'; // 👈 1. Import types ทั้งหมดจากตำแหน่งที่ถูกต้อง
+import { User, Pagination, UserDetails } from '@/app/services/user.types'; // 👈 1. Import types ทั้งหมดจากตำแหน่งที่ถูกต้อง
 import {
   fetchUsers as fetchUsersService,
   suspendUser,
   hardDeleteUser, softDeleteUser, fetchUserDetails
-} from '../services/userService'; // 👈 2. Import services ทั้งหมดจากตำแหน่งที่ถูกต้อง
+} from '@/app/services/userService'; // 👈 2. Import services ทั้งหมดจากตำแหน่งที่ถูกต้อง
 
 // 3. Constants
 const LIMIT = 10;

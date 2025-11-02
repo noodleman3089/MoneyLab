@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { User } from '../services/user.types'; // Import type จากไฟล์กลาง
-import { DashboardSummary, ExpenseChartData, IncomeChartData } from '../services/dashboard.types'; // Import type ของ Dashboard
-import { fetchUsers } from '../services/userService'; // Import service สำหรับดึง user
-import { fetchDashboardSummary, fetchExpenseChartData, fetchIncomeChartData } from '../services/dashboardService'; // Import service ของ Dashboard
+import { User } from '@/app/services/user.types'; // Import type จากไฟล์กลาง
+import { DashboardSummary, ExpenseChartData, IncomeChartData } from '@/app/services/dashboard.types'; // Import type ของ Dashboard
+import { fetchUsers } from '@/app/services/userService'; // Import service สำหรับดึง user
+import { fetchDashboardSummary, fetchExpenseChartData, fetchIncomeChartData } from '@/app/services/dashboardService'; // Import service ของ Dashboard
 
 export default function UserSummaryDashboard() {
   const [searchValue, setSearchValue] = useState('');
