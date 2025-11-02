@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AdditionalPage extends StatelessWidget {
+// ⭐️ 1. Import service และหน้า Login
+import '../services/authe_service.dart';
+import 'authentication/login.dart'; // (หรือ path ที่ถูกต้องไปยังหน้า LoginPage)
+
+// ⭐️ 2. แปลงเป็น StatefulWidget
+class AdditionalPage extends StatefulWidget {
   const AdditionalPage({super.key});
+
+  @override
+  State<AdditionalPage> createState() => _AdditionalPageState();
+}
+
+// ⭐️ 3. สร้างคลาส State
+class _AdditionalPageState extends State<AdditionalPage> {
+  // ⭐️ 4. สร้าง instance ของ service
+  final AutheService _authService = AutheService();
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +74,7 @@ class AdditionalPage extends StatelessWidget {
                           _showComingSoonDialog(context, 'เปลี่ยนรหัสผ่าน');
                         },
                       ),
-                      
+
                       const SizedBox(height: 24),
                       // การแจ้งเตือน Section
                       _buildSectionHeader('การแจ้งเตือน'),
@@ -77,21 +91,13 @@ class AdditionalPage extends StatelessWidget {
                       // ตั้งค่าทั่วไป Section
                       _buildSectionHeader('ออกจากระบบ'),
                       const SizedBox(height: 12),
-                      // _buildMenuItem(
-                      //   context,
-                      //   title: 'เปลี่ยนภาษา (ไทย / อังกฤษ)',
-                      //   icon: Icons.language,
-                      //   onTap: () {
-                      //     _showLanguageDialog(context);
-                      //   },
-                      // ),
-                      const SizedBox(height: 12),
                       _buildMenuItem(
                         context,
                         title: 'ออกจากระบบ',
                         icon: Icons.logout,
                         isLogout: true,
                         onTap: () {
+                          // ⭐️ 5. เรียกใช้ฟังก์ชัน _showLogoutDialog (ซึ่งตอนนี้อยู่ใน State)
                           _showLogoutDialog(context);
                         },
                       ),
@@ -107,6 +113,7 @@ class AdditionalPage extends StatelessWidget {
     );
   }
 
+  // ⭐️ 6. ย้าย Helper methods ทั้งหมดเข้ามาในคลาส State
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
@@ -138,7 +145,8 @@ class AdditionalPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                // ⭐️ (แก้ไข Error) .withValues ➜ .withOpacity
+                color: Colors.black.withOpacity(0.08),
                 blurRadius: 12,
                 offset: const Offset(0, 2),
               ),
@@ -159,11 +167,7 @@ class AdditionalPage extends StatelessWidget {
                         ),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 24,
-                ),
+                child: Icon(icon, color: Colors.white, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -172,14 +176,18 @@ class AdditionalPage extends StatelessWidget {
                   style: GoogleFonts.beVietnamPro(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: isLogout ? const Color(0xFFD32F2F) : const Color(0xFF223248),
+                    color: isLogout
+                        ? const Color(0xFFD32F2F)
+                        : const Color(0xFF223248),
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: isLogout ? const Color(0xFFD32F2F) : const Color(0xFF999999),
+                color: isLogout
+                    ? const Color(0xFFD32F2F)
+                    : const Color(0xFF999999),
               ),
             ],
           ),
@@ -187,150 +195,6 @@ class AdditionalPage extends StatelessWidget {
       ),
     );
   }
-
-  // void _showLanguageDialog(BuildContext context) {
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(24),
-  //         ),
-  //         title: Row(
-  //           children: [
-  //             Container(
-  //               padding: const EdgeInsets.all(8),
-  //               decoration: BoxDecoration(
-  //                 gradient: const LinearGradient(
-  //                   colors: [Color(0xFF14B8A6), Color(0xFF4FB7B3)],
-  //                 ),
-  //                 borderRadius: BorderRadius.circular(12),
-  //               ),
-  //               child: const Icon(Icons.language, color: Colors.white, size: 24),
-  //             ),
-  //             const SizedBox(width: 12),
-  //             Text(
-  //               'เลือกภาษา',
-  //               style: GoogleFonts.beVietnamPro(
-  //                 fontWeight: FontWeight.bold,
-  //                 color: const Color(0xFF223248),
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         content: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             _buildLanguageOption(
-  //               context,
-  //               title: 'ไทย',
-  //               subtitle: 'Thai',
-  //               flag: '🇹🇭',
-  //               isSelected: true,
-  //             ),
-  //             const SizedBox(height: 8),
-  //             _buildLanguageOption(
-  //               context,
-  //               title: 'English',
-  //               subtitle: 'อังกฤษ',
-  //               flag: '🇬🇧',
-  //               isSelected: false,
-  //             ),
-  //           ],
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () => Navigator.pop(context),
-  //             child: Text(
-  //               'ปิด',
-  //               style: GoogleFonts.beVietnamPro(
-  //                 color: const Color(0xFF14B8A6),
-  //                 fontWeight: FontWeight.w600,
-  //                 fontSize: 16,
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
-
-  // Widget _buildLanguageOption(
-  //   BuildContext context, {
-  //   required String title,
-  //   required String subtitle,
-  //   required String flag,
-  //   required bool isSelected,
-  // }) {
-  //   return InkWell(
-  //     onTap: () {
-  //       Navigator.pop(context);
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: Text(
-  //             'เปลี่ยนภาษาเป็น $title แล้ว',
-  //             style: GoogleFonts.beVietnamPro(),
-  //           ),
-  //           backgroundColor: const Color(0xFF14B8A6),
-  //           behavior: SnackBarBehavior.floating,
-  //           shape: RoundedRectangleBorder(
-  //             borderRadius: BorderRadius.circular(12),
-  //           ),
-  //         ),
-  //       );
-  //     },
-  //     borderRadius: BorderRadius.circular(12),
-  //     child: Container(
-  //       padding: const EdgeInsets.all(12),
-  //       decoration: BoxDecoration(
-  //         color: isSelected ? const Color(0xFFE0F7F4) : Colors.transparent,
-  //         borderRadius: BorderRadius.circular(12),
-  //         border: Border.all(
-  //           color: isSelected ? const Color(0xFF14B8A6) : Colors.grey[300]!,
-  //           width: 2,
-  //         ),
-  //       ),
-  //       child: Row(
-  //         children: [
-  //           Text(
-  //             flag,
-  //             style: const TextStyle(fontSize: 32),
-  //           ),
-  //           const SizedBox(width: 12),
-  //           Expanded(
-  //             child: Column(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 Text(
-  //                   title,
-  //                   style: GoogleFonts.beVietnamPro(
-  //                     fontSize: 16,
-  //                     fontWeight: FontWeight.w600,
-  //                     color: const Color(0xFF223248),
-  //                   ),
-  //                 ),
-  //                 Text(
-  //                   subtitle,
-  //                   style: GoogleFonts.beVietnamPro(
-  //                     fontSize: 14,
-  //                     color: const Color(0xFF999999),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //           if (isSelected)
-  //             const Icon(
-  //               Icons.check_circle,
-  //               color: Color(0xFF14B8A6),
-  //               size: 24,
-  //             ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
 
   void _showComingSoonDialog(BuildContext context, String feature) {
     showDialog(
@@ -345,8 +209,8 @@ class AdditionalPage extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE0F7F4),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFE0F7F4),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -403,10 +267,12 @@ class AdditionalPage extends StatelessWidget {
     );
   }
 
+  // ⭐️ 7. แก้ไขฟังก์ชัน Logout ให้เชื่อมต่อกับ Service
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
+        // ⭐️ ใช้ dialogContext
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
@@ -451,7 +317,7 @@ class AdditionalPage extends StatelessWidget {
               children: [
                 Expanded(
                   child: TextButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => Navigator.pop(dialogContext), // ⭐️
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -472,9 +338,48 @@ class AdditionalPage extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.pushReplacementNamed(context, '/');
+                    // ⭐️ 8. เปลี่ยนเป็น async และเรียกใช้ service
+                    onPressed: () async {
+                      try {
+                        // เรียกใช้ logout()
+                        await _authService.logout();
+
+                        if (!mounted) return;
+
+                        // ปิด Dialog
+                        Navigator.pop(dialogContext);
+
+                        // เด้งไปหน้า Login และล้างทุกหน้า
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                          (route) => false,
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'ออกจากระบบสำเร็จ',
+                              style: GoogleFonts.beVietnamPro(),
+                            ),
+                          ),
+                        );
+                      } catch (e) {
+                        if (!mounted) return;
+                        // ถ้า Error
+                        Navigator.pop(dialogContext); // ปิด Dialog
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'เกิดข้อผิดพลาด: ${e.toString()}',
+                              style: GoogleFonts.beVietnamPro(),
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFD32F2F),
