@@ -15,7 +15,7 @@ class SavingGoal {
   String investMode; // 'recommend', 'custom', 'none'
   String symbols;
   double progress;
-  double perPeriod;
+  double perPeriod; // จำนวนเงินที่ออมต่อรอบ
   double perDay;
 
   SavingGoal({
@@ -132,9 +132,10 @@ class _GoalPageState extends State<GoalPage> {
     return (saved / target * 100).clamp(0.0, 100.0);
   }
 
-  double calculatePerPeriod(double target, double saved, int duration) {
+  int calculateDuration(double target, double saved, double perPeriod) {
+    if (perPeriod <= 0) return 0;
     final remain = (target - saved).clamp(0.0, double.infinity);
-    return duration > 0 ? (remain / duration).ceilToDouble() : remain;
+    return (remain / perPeriod).ceil();
   }
 
   void _showCreateGoalDialog() {
@@ -150,7 +151,7 @@ class _GoalPageState extends State<GoalPage> {
         },
         unitLabel: unitLabel,
         unitDays: unitDays,
-        calculatePerPeriod: calculatePerPeriod,
+        calculateDuration: calculateDuration,
       ),
     );
   }
@@ -170,10 +171,10 @@ class _GoalPageState extends State<GoalPage> {
             if (index != -1) {
               goals[index].saved += amount;
               goals[index].progress = calculateProgress(goals[index].saved, goals[index].target);
-              goals[index].perPeriod = calculatePerPeriod(
+              goals[index].duration = calculateDuration(
                 goals[index].target,
                 goals[index].saved,
-                goals[index].duration,
+                goals[index].perPeriod,
               );
               goals[index].perDay = (goals[index].perPeriod / unitDays(goals[index].unit)).ceilToDouble();
             }
@@ -201,10 +202,10 @@ class _GoalPageState extends State<GoalPage> {
             if (index != -1) {
               goals[index] = updatedGoal;
               goals[index].progress = calculateProgress(updatedGoal.saved, updatedGoal.target);
-              goals[index].perPeriod = calculatePerPeriod(
+              goals[index].duration = calculateDuration(
                 updatedGoal.target,
                 updatedGoal.saved,
-                updatedGoal.duration,
+                updatedGoal.perPeriod,
               );
               goals[index].perDay = (goals[index].perPeriod / unitDays(updatedGoal.unit)).ceilToDouble();
             }
@@ -519,14 +520,14 @@ class CreateGoalSheet extends StatefulWidget {
   final Function(SavingGoal) onCreateGoal;
   final String Function(String) unitLabel;
   final int Function(String) unitDays;
-  final double Function(double, double, int) calculatePerPeriod;
+  final int Function(double, double, double) calculateDuration;
 
   const CreateGoalSheet({
     super.key,
     required this.onCreateGoal,
     required this.unitLabel,
     required this.unitDays,
-    required this.calculatePerPeriod,
+    required this.calculateDuration,
   });
 
   @override
@@ -537,7 +538,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
-  final _durationController = TextEditingController();
+  final _perPeriodController = TextEditingController();
   final _symbolsController = TextEditingController();
 
   String _unit = 'month';
@@ -637,11 +638,11 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
                         children: [
                           Expanded(
                             child: TextFormField(
-                              controller: _durationController,
+                              controller: _perPeriodController,
                               style: GoogleFonts.beVietnamPro(),
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
-                                labelText: 'ระยะเวลา',
+                                labelText: 'ออมครั้งละ (บาท)',
                                 labelStyle: GoogleFonts.beVietnamPro(),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 focusedBorder: OutlineInputBorder(
@@ -649,7 +650,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
                                   borderSide: const BorderSide(color: Color(0xFF4FB7B3), width: 2),
                                 ),
                               ),
-                              validator: (value) => value?.isEmpty ?? true ? 'กรุณากรอกระยะเวลา' : null,
+                              validator: (value) => value?.isEmpty ?? true ? 'กรุณากรอกจำนวนเงินที่ออม' : null,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -658,7 +659,7 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
                               value: _unit,
                               style: GoogleFonts.beVietnamPro(color: Colors.black),
                               decoration: InputDecoration(
-                                labelText: 'ระยะเวลา',
+                                labelText: 'ออมทุก',
                                 labelStyle: GoogleFonts.beVietnamPro(),
                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                                 focusedBorder: OutlineInputBorder(
@@ -795,8 +796,8 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
   void _handleCreate() {
     if (_formKey.currentState!.validate()) {
       final target = double.parse(_amountController.text);
-      final duration = int.parse(_durationController.text);
-      final perPeriod = widget.calculatePerPeriod(target, 0, duration);
+      final perPeriod = double.parse(_perPeriodController.text);
+      final duration = widget.calculateDuration(target, 0, perPeriod);
       final perDay = (perPeriod / widget.unitDays(_unit)).ceilToDouble();
 
       final newGoal = SavingGoal(
@@ -1081,7 +1082,7 @@ class EditGoalSheet extends StatefulWidget {
 class _EditGoalSheetState extends State<EditGoalSheet> {
   late TextEditingController _nameController;
   late TextEditingController _targetController;
-  late TextEditingController _durationController;
+  late TextEditingController _perPeriodController;
   late String _unit;
 
   @override
@@ -1089,7 +1090,7 @@ class _EditGoalSheetState extends State<EditGoalSheet> {
     super.initState();
     _nameController = TextEditingController(text: widget.goal.name);
     _targetController = TextEditingController(text: widget.goal.target.toInt().toString());
-    _durationController = TextEditingController(text: widget.goal.duration.toString());
+    _perPeriodController = TextEditingController(text: widget.goal.perPeriod.toInt().toString());
     _unit = widget.goal.unit;
   }
 
@@ -1175,11 +1176,11 @@ class _EditGoalSheetState extends State<EditGoalSheet> {
                       children: [
                         Expanded(
                           child: TextField(
-                            controller: _durationController,
+                            controller: _perPeriodController,
                             style: GoogleFonts.beVietnamPro(),
                             keyboardType: TextInputType.number,
                             decoration: InputDecoration(
-                              labelText: 'ระยะเวลา',
+                              labelText: 'ออมครั้งละ (บาท)',
                               labelStyle: GoogleFonts.beVietnamPro(),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               focusedBorder: OutlineInputBorder(
@@ -1195,7 +1196,7 @@ class _EditGoalSheetState extends State<EditGoalSheet> {
                             value: _unit,
                             style: GoogleFonts.beVietnamPro(color: Colors.black),
                             decoration: InputDecoration(
-                              labelText: 'หน่วย',
+                              labelText: 'ออมทุก',
                               labelStyle: GoogleFonts.beVietnamPro(),
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                               focusedBorder: OutlineInputBorder(
@@ -1231,20 +1232,28 @@ class _EditGoalSheetState extends State<EditGoalSheet> {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
+                              final target = double.parse(_targetController.text);
+                              final perPeriod = double.parse(_perPeriodController.text);
+                              final perDay = (perPeriod / (
+                                _unit == 'day' ? 1 :
+                                _unit == 'week' ? 7 :
+                                _unit == 'month' ? 30 : 365
+                              )).ceilToDouble();
+
                               final updatedGoal = SavingGoal(
                                 id: widget.goal.id,
                                 name: _nameController.text,
                                 emoji: widget.goal.emoji,
                                 saved: widget.goal.saved,
-                                target: double.parse(_targetController.text),
-                                duration: int.parse(_durationController.text),
+                                target: target,
+                                duration: widget.goal.duration,
                                 unit: _unit,
                                 plan: widget.goal.plan,
                                 investMode: widget.goal.investMode,
                                 symbols: widget.goal.symbols,
                                 progress: widget.goal.progress,
-                                perPeriod: widget.goal.perPeriod,
-                                perDay: widget.goal.perDay,
+                                perPeriod: perPeriod,
+                                perDay: perDay,
                               );
                               widget.onSave(updatedGoal);
                               Navigator.pop(context);

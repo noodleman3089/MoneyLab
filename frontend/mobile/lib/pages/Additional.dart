@@ -75,16 +75,16 @@ class AdditionalPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
                       // ตั้งค่าทั่วไป Section
-                      _buildSectionHeader('ตั้งค่าทั่วไป'),
+                      _buildSectionHeader('ออกจากระบบ'),
                       const SizedBox(height: 12),
-                      _buildMenuItem(
-                        context,
-                        title: 'เปลี่ยนภาษา (ไทย / อังกฤษ)',
-                        icon: Icons.language,
-                        onTap: () {
-                          _showLanguageDialog(context);
-                        },
-                      ),
+                      // _buildMenuItem(
+                      //   context,
+                      //   title: 'เปลี่ยนภาษา (ไทย / อังกฤษ)',
+                      //   icon: Icons.language,
+                      //   onTap: () {
+                      //     _showLanguageDialog(context);
+                      //   },
+                      // ),
                       const SizedBox(height: 12),
                       _buildMenuItem(
                         context,
@@ -188,149 +188,149 @@ class AdditionalPage extends StatelessWidget {
     );
   }
 
-  void _showLanguageDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF14B8A6), Color(0xFF4FB7B3)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.language, color: Colors.white, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'เลือกภาษา',
-                style: GoogleFonts.beVietnamPro(
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF223248),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildLanguageOption(
-                context,
-                title: 'ไทย',
-                subtitle: 'Thai',
-                flag: '🇹🇭',
-                isSelected: true,
-              ),
-              const SizedBox(height: 8),
-              _buildLanguageOption(
-                context,
-                title: 'English',
-                subtitle: 'อังกฤษ',
-                flag: '🇬🇧',
-                isSelected: false,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                'ปิด',
-                style: GoogleFonts.beVietnamPro(
-                  color: const Color(0xFF14B8A6),
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _showLanguageDialog(BuildContext context) {
+  //   showDialog(
+  //     context: context,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(24),
+  //         ),
+  //         title: Row(
+  //           children: [
+  //             Container(
+  //               padding: const EdgeInsets.all(8),
+  //               decoration: BoxDecoration(
+  //                 gradient: const LinearGradient(
+  //                   colors: [Color(0xFF14B8A6), Color(0xFF4FB7B3)],
+  //                 ),
+  //                 borderRadius: BorderRadius.circular(12),
+  //               ),
+  //               child: const Icon(Icons.language, color: Colors.white, size: 24),
+  //             ),
+  //             const SizedBox(width: 12),
+  //             Text(
+  //               'เลือกภาษา',
+  //               style: GoogleFonts.beVietnamPro(
+  //                 fontWeight: FontWeight.bold,
+  //                 color: const Color(0xFF223248),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         content: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             _buildLanguageOption(
+  //               context,
+  //               title: 'ไทย',
+  //               subtitle: 'Thai',
+  //               flag: '🇹🇭',
+  //               isSelected: true,
+  //             ),
+  //             const SizedBox(height: 8),
+  //             _buildLanguageOption(
+  //               context,
+  //               title: 'English',
+  //               subtitle: 'อังกฤษ',
+  //               flag: '🇬🇧',
+  //               isSelected: false,
+  //             ),
+  //           ],
+  //         ),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () => Navigator.pop(context),
+  //             child: Text(
+  //               'ปิด',
+  //               style: GoogleFonts.beVietnamPro(
+  //                 color: const Color(0xFF14B8A6),
+  //                 fontWeight: FontWeight.w600,
+  //                 fontSize: 16,
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 
-  Widget _buildLanguageOption(
-    BuildContext context, {
-    required String title,
-    required String subtitle,
-    required String flag,
-    required bool isSelected,
-  }) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'เปลี่ยนภาษาเป็น $title แล้ว',
-              style: GoogleFonts.beVietnamPro(),
-            ),
-            backgroundColor: const Color(0xFF14B8A6),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFE0F7F4) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF14B8A6) : Colors.grey[300]!,
-            width: 2,
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(
-              flag,
-              style: const TextStyle(fontSize: 32),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF223248),
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.beVietnamPro(
-                      fontSize: 14,
-                      color: const Color(0xFF999999),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: Color(0xFF14B8A6),
-                size: 24,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _buildLanguageOption(
+  //   BuildContext context, {
+  //   required String title,
+  //   required String subtitle,
+  //   required String flag,
+  //   required bool isSelected,
+  // }) {
+  //   return InkWell(
+  //     onTap: () {
+  //       Navigator.pop(context);
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(
+  //             'เปลี่ยนภาษาเป็น $title แล้ว',
+  //             style: GoogleFonts.beVietnamPro(),
+  //           ),
+  //           backgroundColor: const Color(0xFF14B8A6),
+  //           behavior: SnackBarBehavior.floating,
+  //           shape: RoundedRectangleBorder(
+  //             borderRadius: BorderRadius.circular(12),
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //     borderRadius: BorderRadius.circular(12),
+  //     child: Container(
+  //       padding: const EdgeInsets.all(12),
+  //       decoration: BoxDecoration(
+  //         color: isSelected ? const Color(0xFFE0F7F4) : Colors.transparent,
+  //         borderRadius: BorderRadius.circular(12),
+  //         border: Border.all(
+  //           color: isSelected ? const Color(0xFF14B8A6) : Colors.grey[300]!,
+  //           width: 2,
+  //         ),
+  //       ),
+  //       child: Row(
+  //         children: [
+  //           Text(
+  //             flag,
+  //             style: const TextStyle(fontSize: 32),
+  //           ),
+  //           const SizedBox(width: 12),
+  //           Expanded(
+  //             child: Column(
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Text(
+  //                   title,
+  //                   style: GoogleFonts.beVietnamPro(
+  //                     fontSize: 16,
+  //                     fontWeight: FontWeight.w600,
+  //                     color: const Color(0xFF223248),
+  //                   ),
+  //                 ),
+  //                 Text(
+  //                   subtitle,
+  //                   style: GoogleFonts.beVietnamPro(
+  //                     fontSize: 14,
+  //                     color: const Color(0xFF999999),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //           if (isSelected)
+  //             const Icon(
+  //               Icons.check_circle,
+  //               color: Color(0xFF14B8A6),
+  //               size: 24,
+  //             ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   void _showComingSoonDialog(BuildContext context, String feature) {
     showDialog(

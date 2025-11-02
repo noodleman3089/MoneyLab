@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'DebtInfoQA.dart';
 
 class FinancialDataQAPage extends StatefulWidget {
   const FinancialDataQAPage({super.key});
@@ -66,6 +67,14 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
           ),
         ],
       ),
+    );
+  }
+
+  // ทดสอบการเปลี่ยนหน้า
+  void handleNextPage() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const DebtInfoQAPage()),
     );
   }
 
@@ -461,6 +470,39 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                 ),
 
                 const SizedBox(height: 20),
+
+                // Test Button to Test DebtInfoQA Page
+                SizedBox(
+                  width: 200,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DebtInfoQAPage(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFFB74D),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      elevation: 4,
+                    ),
+                    child: Text(
+                      'Test DebtInfoQA Page',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+
               ],
             ),
           ),

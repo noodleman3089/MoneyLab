@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
-import 'Navbar.dart' as navbar;
+import 'components/Navbar.dart' as navbar;
 import 'FinancialDataQA.dart';
 
 class QuestionnairePage extends StatefulWidget {
@@ -316,7 +316,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
 
                         const SizedBox(height: 16),
 
-                        // Test Button to Test Home Page
+                        // Test Button to Test FinancialDataQA Page
                         SizedBox(
                           width: 200,
                           height: 50,
@@ -339,7 +339,7 @@ class _QuestionnairePageState extends State<QuestionnairePage> {
                               elevation: 4,
                             ),
                             child: Text(
-                              'Test Home Page',
+                              'Test FinancialDataQA Page',
                               style: GoogleFonts.beVietnamPro(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,

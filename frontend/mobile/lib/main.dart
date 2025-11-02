@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'pages/login.dart';
-import 'pages/register.dart';
+import 'pages/authentication/login.dart';
+import 'pages/authentication/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
-import 'pages/Navbar.dart' as navbar;
-import 'pages/Additional.dart';
-import 'pages/UserProfilePage.dart' as userprofile;
-import 'pages/Questionnaire.dart';
+import 'pages/Test/TestPage.dart';
+// import 'pages/Additional.dart';
+// import 'pages/UserProfilePage.dart' as userprofile;
 
 void main() {
   runApp(const MyApp());
@@ -84,7 +83,7 @@ class _MyHomePageState extends State<MyHomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo or App Title
+                  // Logo and Title
                   Text(
                     'MoneyLab',
                     style: GoogleFonts.beVietnamPro(
@@ -162,43 +161,9 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
-
-                  // Test Button to Home Page
-                  SizedBox(
-                    width: 200,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const navbar.MainScreen(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFB74D),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: Text(
-                        'Test Home Page',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-
                  const SizedBox(height: 24),
 
-                  // Test Button to Questionnaire Page
+                  // Test Button to Test Page
                   SizedBox(
                     width: 200,
                     height: 50,
@@ -207,7 +172,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const QuestionnairePage(),
+                            builder: (context) => const TestPage(),
                           ),
                         );
                       },
@@ -221,7 +186,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       ),
                       child: Text(
                         textAlign: TextAlign.center, 
-                        'Test Questionnaire Page',
+                        'Test Page',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
