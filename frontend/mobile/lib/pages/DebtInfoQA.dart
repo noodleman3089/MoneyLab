@@ -68,7 +68,8 @@ class _DebtInfoQAPageState extends State<DebtInfoQAPage> {
       if (!mounted) return;
 
       if (result['status'] == true) {
-        _showSuccessDialogAndNavigate();
+        // ถามว่ามีหนี้เพิ่มไหม
+        _showMoreDebtQuestionDialog();
       } else {
         _showDialog(result['message'] ?? 'เกิดข้อผิดพลาด');
       }
@@ -113,7 +114,84 @@ class _DebtInfoQAPageState extends State<DebtInfoQAPage> {
     );
   }
 
-  // 👈 4. [NEW] สร้าง Dialog สำหรับเมื่อสำเร็จ และนำทางไปหน้าหลัก
+  // 👈 4. [NEW] แสดง Dialog ถามว่ามีหนี้เพิ่มไหม
+  void _showMoreDebtQuestionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'บันทึกข้อมูลหนี้สำเร็จ',
+          style: GoogleFonts.beVietnamPro(
+            fontWeight: FontWeight.bold,
+            color: Colors.green,
+          ),
+        ),
+        content: Text(
+          'คุณมีหนี้สินอื่นอีกหรือไม่?',
+          style: GoogleFonts.beVietnamPro(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // ไม่มีหนี้เพิ่ม - ไปหน้าหลัก
+              _showSuccessDialogAndNavigate();
+            },
+            child: Text(
+              'ไม่มี',
+              style: GoogleFonts.beVietnamPro(
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // มีหนี้เพิ่ม - ล้างฟอร์มให้กรอกใหม่
+              _clearForm();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF223248),
+            ),
+            child: Text(
+              'มี',
+              style: GoogleFonts.beVietnamPro(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 👈 5. [NEW] ล้างฟอร์มสำหรับกรอกหนี้ใหม่
+  void _clearForm() {
+    setState(() {
+      _debtAmountController.clear();
+      _monthlyPaymentController.clear();
+      _interestRateController.clear();
+      _selectedDebtType = null;
+    });
+    // Scroll to top
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'กรุณากรอกข้อมูลหนี้เพิ่มเติม',
+              style: GoogleFonts.beVietnamPro(),
+            ),
+            backgroundColor: const Color(0xFF223248),
+          ),
+        );
+      }
+    });
+  }
+
+  // 👈 6. [NEW] สร้าง Dialog สำหรับเมื่อสำเร็จและนำทางไปหน้าหลัก
   void _showSuccessDialogAndNavigate() {
     showDialog(
       context: context,

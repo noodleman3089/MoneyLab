@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'DebtInfoQA.dart';
+import '../services/lookup_service.dart';
+import '../services/profile_service.dart';
+import 'components/Navbar.dart' as navbar;
 
 class FinancialDataQAPage extends StatefulWidget {
   const FinancialDataQAPage({super.key});
@@ -10,51 +13,115 @@ class FinancialDataQAPage extends StatefulWidget {
 }
 
 class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
+  // Services
+  final LookupService _lookupService = LookupService();
+  final ProfileService _profileService = ProfileService();
+
   // Controllers for text fields
   final TextEditingController _mainIncomeController = TextEditingController();
-  final TextEditingController _mainIncomePeriodController = TextEditingController();
   final TextEditingController _extraIncomeController = TextEditingController();
-  final TextEditingController _extraIncomePeriodController = TextEditingController();
 
-  String? _selectedAge;
+  // Dropdown selections
+  int? _selectedOccupationId;
+  int? _selectedMainIncomePeriodId;
+  int? _selectedSideIncomePeriodId;
 
-  // รายการอายุสำหรับ dropdown
-  final List<String> _ageOptions = [
-    'ต่ำกว่า 18 ปี',
-    '18-25 ปี',
-    '26-35 ปี',
-    '36-45 ปี',
-    '46-55 ปี',
-    '56-65 ปี',
-    'มากกว่า 65 ปี',
-  ];
+  // Data from API
+  List<Map<String, dynamic>> _occupations = [];
+  List<Map<String, dynamic>> _incomePeriods = [];
+  bool _isLoading = true;
+
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  /// โหลดข้อมูลจาก API
+  Future<void> _loadData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+      });
+
+      // ดึงข้อมูล lookups
+      final lookupData = await _lookupService.fetchAllLookups();
+
+      setState(() {
+        _occupations = (lookupData['occupations'] as List).cast<Map<String, dynamic>>();
+        _incomePeriods = (lookupData['income_periods'] as List).cast<Map<String, dynamic>>();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showDialog('ไม่สามารถโหลดข้อมูลได้: ${e.toString()}');
+    }
+  }
 
   @override
   void dispose() {
     _mainIncomeController.dispose();
-    _mainIncomePeriodController.dispose();
     _extraIncomeController.dispose();
-    _extraIncomePeriodController.dispose();
     super.dispose();
   }
 
-  void _handleSubmit() {
-    // ตรวจสอบว่างกรอกข้อมูลครบหรือไม่
-    if (_selectedAge == null) {
-      _showDialog('กรุณาเลือกช่วงอายุ');
+  /// บันทึกข้อมูลไปยัง Backend
+  Future<void> _handleSubmit() async {
+    // ตรวจสอบว่ากรอกข้อมูลครบหรือไม่
+    if (_selectedOccupationId == null) {
+      _showDialog('กรุณาเลือกอาชีพ');
       return;
     }
 
-    if (_mainIncomeController.text.isEmpty || _mainIncomePeriodController.text.isEmpty) {
-      _showDialog('กรุณากรอกรายได้หลักและระยะเวลา');
+    if (_mainIncomeController.text.isEmpty || _selectedMainIncomePeriodId == null) {
+      _showDialog('กรุณากรอกรายได้หลักและเลือกระยะเวลา');
       return;
     }
 
-    // แสดงข้อมูลที่กรอก (สามารถส่งไป API ได้)
-    _showDialog('บันทึกข้อมูลเรียบร้อย');
+    // เตรียมข้อมูลสำหรับส่งไป API
+    final profileData = {
+      'occupation_id': _selectedOccupationId,
+      'main_income_amount': double.tryParse(_mainIncomeController.text) ?? 0.0,
+      'main_income_period_id': _selectedMainIncomePeriodId,
+      'side_income_amount': _extraIncomeController.text.isEmpty
+          ? 0.0
+          : double.tryParse(_extraIncomeController.text) ?? 0.0,
+      'side_income_period_id': _selectedSideIncomePeriodId,
+    };
+
+    try {
+      // แสดง Loading Dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // เรียก API
+      final result = await _profileService.updateUserProfile(profileData);
+
+      // ปิด Loading Dialog
+      if (mounted) Navigator.of(context).pop();
+
+      if (result['status'] == true) {
+        // ถามว่ามีหนี้ไหม
+        _showDebtQuestionDialog();
+      } else {
+        _showDialog(result['message'] ?? 'เกิดข้อผิดพลาด');
+      }
+    } catch (e) {
+      // ปิด Loading Dialog
+      if (mounted) Navigator.of(context).pop();
+      _showDialog('ไม่สามารถบันทึกข้อมูลได้: ${e.toString()}');
+    }
   }
 
-  void _showDialog(String message) {
+  void _showDialog(String message, {VoidCallback? onOk}) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -62,8 +129,70 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              Navigator.of(context).pop();
+              if (onOk != null) onOk();
+            },
             child: const Text('ตกลง'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// แสดง Dialog ถามว่ามีหนี้ไหม
+  void _showDebtQuestionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'คุณมีหนี้สินหรือไม่?',
+          style: GoogleFonts.beVietnamPro(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'ถ้าคุณมีหนี้สิน กรุณาบันทึกข้อมูลเพื่อให้เราช่วยวางแผนการเงินให้คุณได้ดีขึ้น',
+          style: GoogleFonts.beVietnamPro(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // ไม่มีหนี้ - ไปหน้าหลัก
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
+                (Route<dynamic> route) => false,
+              );
+            },
+            child: Text(
+              'ไม่มี',
+              style: GoogleFonts.beVietnamPro(
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // มีหนี้ - ไปหน้ากรอกข้อมูลหนี้
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const DebtInfoQAPage()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF223248),
+            ),
+            child: Text(
+              'มี',
+              style: GoogleFonts.beVietnamPro(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -94,20 +223,22 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
           ),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF6ECCC4), Color(0xFFB8D4D6)],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF6ECCC4), Color(0xFFB8D4D6)],
+                ),
+              ),
+              child: SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
                 const SizedBox(height: 20),
 
                 // Header Title
@@ -149,12 +280,12 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
 
                 const SizedBox(height: 40),
 
-                // อายุ Dropdown
+                // อาชีพ Dropdown
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'อายุ',
+                      'อาชีพ',
                       style: GoogleFonts.beVietnamPro(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -174,8 +305,8 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                           ),
                         ],
                       ),
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedAge,
+                      child: DropdownButtonFormField<int>(
+                        value: _selectedOccupationId,
                         decoration: InputDecoration(
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -189,23 +320,23 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                           ),
                         ),
                         hint: Text(
-                          'เลือกช่วงอายุ',
+                          'เลือกอาชีพ',
                           style: GoogleFonts.beVietnamPro(
                             color: Colors.grey,
                           ),
                         ),
-                        items: _ageOptions.map((String age) {
-                          return DropdownMenuItem<String>(
-                            value: age,
+                        items: _occupations.map((occupation) {
+                          return DropdownMenuItem<int>(
+                            value: occupation['occupation_id'],
                             child: Text(
-                              age,
+                              occupation['occupation_name'],
                               style: GoogleFonts.beVietnamPro(),
                             ),
                           );
                         }).toList(),
-                        onChanged: (String? newValue) {
+                        onChanged: (int? newValue) {
                           setState(() {
-                            _selectedAge = newValue;
+                            _selectedOccupationId = newValue;
                           });
                         },
                       ),
@@ -300,10 +431,8 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                                 ),
                               ],
                             ),
-                            child: TextField(
-                              controller: _mainIncomePeriodController,
-                              keyboardType: TextInputType.number,
-                              style: GoogleFonts.beVietnamPro(),
+                            child: DropdownButtonFormField<int>(
+                              value: _selectedMainIncomePeriodId,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -315,11 +444,27 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                                   horizontal: 16,
                                   vertical: 12,
                                 ),
-                                hintText: '3',
-                                hintStyle: GoogleFonts.beVietnamPro(
+                              ),
+                              hint: Text(
+                                'เลือก',
+                                style: GoogleFonts.beVietnamPro(
                                   color: Colors.grey,
                                 ),
                               ),
+                              items: _incomePeriods.map((period) {
+                                return DropdownMenuItem<int>(
+                                  value: period['period_id'],
+                                  child: Text(
+                                    period['name_th'],
+                                    style: GoogleFonts.beVietnamPro(fontSize: 12),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  _selectedMainIncomePeriodId = newValue;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -340,7 +485,7 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'รายได้เสริม',
+                            'รายได้เสริม (ถ้ามี)',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
@@ -415,10 +560,8 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                                 ),
                               ],
                             ),
-                            child: TextField(
-                              controller: _extraIncomePeriodController,
-                              keyboardType: TextInputType.number,
-                              style: GoogleFonts.beVietnamPro(),
+                            child: DropdownButtonFormField<int>(
+                              value: _selectedSideIncomePeriodId,
                               decoration: InputDecoration(
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -430,11 +573,27 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                                   horizontal: 16,
                                   vertical: 12,
                                 ),
-                                hintText: '3',
-                                hintStyle: GoogleFonts.beVietnamPro(
+                              ),
+                              hint: Text(
+                                'เลือก',
+                                style: GoogleFonts.beVietnamPro(
                                   color: Colors.grey,
                                 ),
                               ),
+                              items: _incomePeriods.map((period) {
+                                return DropdownMenuItem<int>(
+                                  value: period['period_id'],
+                                  child: Text(
+                                    period['name_th'],
+                                    style: GoogleFonts.beVietnamPro(fontSize: 12),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (int? newValue) {
+                                setState(() {
+                                  _selectedSideIncomePeriodId = newValue;
+                                });
+                              },
                             ),
                           ),
                         ],
@@ -503,11 +662,11 @@ class _FinancialDataQAPageState extends State<FinancialDataQAPage> {
                   ),
                 ),
 
-              ],
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
     );
   }
 }
