@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { query } from '../index';
 import { sendEmail } from '../sendEmail/sendEmail';
 import moment from 'moment-timezone';
+import { logActivity } from '../services/log.service';
 
 const routerR = Router();
 
@@ -12,6 +13,7 @@ const routerR = Router();
 ========================================================== */
 routerR.post('/forgot-password', async (req: Request, res: Response) => {
   const { identifier } = req.body; // email หรือ username
+  let userId: number = 0;
 
   try {
     let user;
@@ -23,10 +25,19 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
     }
 
     if (user.length === 0) {
+      await logActivity({
+        user_id: 0,
+        actor_id: 0,
+        actor_type: 'user',
+        action: 'RESET_PASSWORD_REQUEST_FAIL',
+        description: `Forgot password attempt for unknown user: ${identifier}.`,
+        req: req,
+        new_value: { identifier }
+      });
       return res.status(404).json({ message: 'User not found', status: false });
     }
 
-    const userId = user[0].user_id;
+    userId = user[0].user_id;
     const email = user[0].email;
 
     // ✅ สร้าง token + hash
@@ -57,8 +68,28 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
       <p><a href="${resetLink}" target="_blank" style="color:#0066cc">🔗 เปลี่ยนรหัสผ่านที่นี่</a></p>`
     );
 
+    await logActivity({
+      user_id: userId,
+      actor_id: userId,
+      actor_type: 'user',
+      action: 'RESET_PASSWORD_REQUEST_SUCCESS',
+      table_name: 'password_reset_tokens',
+      record_id: userId, 
+      description: `User ${user[0].username} (ID: ${userId}) requested a password reset.`,
+      req: req
+    });
+
     res.json({ status: true, message: 'ส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลแล้ว' });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+      user_id: userId, // 👈 (ถ้าหา user เจอก่อน Error ก็จะมี ID, ถ้าไม่เจอจะเป็น 0)
+      actor_id: userId,
+      actor_type: 'system',
+      action: 'RESET_PASSWORD_REQUEST_EXCEPTION',
+      description: `Forgot password exception for ${identifier}. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ message: 'Server error', status: false });
   }
@@ -69,6 +100,7 @@ routerR.post('/forgot-password', async (req: Request, res: Response) => {
 ========================================================== */
 routerR.post('/reset-password', async (req: Request, res: Response) => {
   const { token, newPassword, confirmPassword } = req.body;
+  let userId: number = 0;
 
   if (!token || !newPassword || !confirmPassword) {
     return res.status(400).json({
@@ -103,13 +135,21 @@ routerR.post('/reset-password', async (req: Request, res: Response) => {
     );
 
     if (rows.length === 0) {
+      await logActivity({
+        user_id: 0,
+        actor_id: 0,
+        actor_type: 'user',
+        action: 'RESET_PASSWORD_FAIL_INVALID_TOKEN',
+        description: 'Password reset attempt with invalid or expired token.',
+        req: req
+      });
       return res.status(400).json({
         status: false,
         message: 'Token ไม่ถูกต้อง หรือหมดอายุแล้ว',
       });
     }
 
-    const userId = rows[0].user_id;
+    userId = rows[0].user_id;
 
     // ✅ ดึง password เดิมเพื่อตรวจว่าซ้ำไหม
     const oldPasswordRow: any = await query(
@@ -122,6 +162,16 @@ routerR.post('/reset-password', async (req: Request, res: Response) => {
     // ตรวจว่ารหัสผ่านใหม่เหมือนของเดิมไหม
     const isSame = oldHash ? await bcrypt.compare(newPassword, oldHash) : false;
     if (isSame) {
+      await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'user',
+        action: 'RESET_PASSWORD_FAIL_SAME_PASSWORD',
+        table_name: 'users',
+        record_id: userId,
+        description: `User ${userId} attempted to reset password to the same old password.`,
+        req: req
+      });
       return res.status(400).json({
         status: false,
         message: 'รหัสผ่านใหม่ต้องไม่เหมือนกับรหัสผ่านเดิม',
@@ -137,8 +187,28 @@ routerR.post('/reset-password', async (req: Request, res: Response) => {
     // ✅ mark token ว่าใช้แล้ว
     await query("UPDATE password_reset_tokens SET used_at = NOW() WHERE token_hash = ?", [tokenHash]);
 
+    await logActivity({
+      user_id: userId,
+      actor_id: userId,
+      actor_type: 'user',
+      action: 'RESET_PASSWORD_SUCCESS',
+      table_name: 'users',
+      record_id: userId,
+      description: `User ${userId} successfully reset their password.`,
+      req: req
+    });
+
     res.json({ status: true, message: 'เปลี่ยนรหัสผ่านสำเร็จ' });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+      user_id: userId, // 👈 (ถ้าหา user เจอก่อน Error ก็จะมี ID, ถ้าไม่เจอจะเป็น 0)
+      actor_id: userId,
+      actor_type: 'system',
+      action: 'RESET_PASSWORD_EXCEPTION',
+      description: `Password reset failed with error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ message: 'Server error', status: false });
   }

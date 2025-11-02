@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import { sendEmail } from '../sendEmail/sendEmail';
 import { query } from '../index';
 import moment from 'moment-timezone';
+import { logActivity } from '../services/log.service';
 
 const controllers_R = express.Router();
 
@@ -38,6 +39,16 @@ controllers_R.post('/register',
       );
 
       if (existingUser.length > 0) {
+        await logActivity({
+          user_id: existingUser[0].user_id, // 👈 User ที่ถูกพยายามสมัครทับ
+          actor_id: null,
+          actor_type: 'user',
+          action: 'REGISTER_FAIL_USER_EXISTS',
+          table_name: 'users',
+          record_id: existingUser[0].user_id,
+          description: `Registration attempt failed for existing user: ${username} or ${email}.`,
+          req: req
+        });
         return res.status(409).send({ message: 'User already exists (username/email/phone_number)', status: false });
       }
 
@@ -63,12 +74,32 @@ controllers_R.post('/register',
         `<h2>ยืนยันการสมัครสมาชิก</h2><p>รหัส OTP ของคุณคือ <b>${otpCode}</b> (หมดอายุใน 5 นาที)</p>`
       );
 
+      await logActivity({
+        user_id: null, // 👈 User ยังไม่ถูกสร้าง
+        actor_id: null,
+        actor_type: 'user',
+        action: 'OTP_REQUEST_SUCCESS',
+        table_name: 'otp_verification',
+        description: `OTP sent successfully to ${email}.`,
+        req: req,
+        new_value: { email: email, username: username }
+      });
+
       res.send({
         status: true,
         message: 'OTP has been sent to your email',
         email
       });
-    } catch (err) {
+    } catch (err: any) {
+      await logActivity({
+        user_id: null,
+        actor_id: null,
+        actor_type: 'system',
+        action: 'REGISTER_EXCEPTION',
+        description: `Registration failed with error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+      });
       console.error(err);
       next(err);
     }
@@ -93,24 +124,66 @@ controllers_R.post('/verify-otp',
       );
 
       if (!record) {
+        await logActivity({
+          user_id: null,
+          actor_id: null,
+          actor_type: 'user',
+          action: 'VERIFY_OTP_FAIL_INVALID',
+          description: `Invalid OTP attempt for email: ${email}.`,
+          req: req,
+          new_value: { email: email, otp: otp }
+        });
         return res.status(400).json({ status: false, message: 'Invalid OTP or already verified' });
       }
 
       if (new Date(record.expires_at) < new Date()) {
+        await logActivity({
+          user_id: null,
+          actor_id: null,
+          actor_type: 'user',
+          action: 'VERIFY_OTP_FAIL_EXPIRED',
+          table_name: 'otp_verification',
+          record_id: record.id,
+          description: `Expired OTP attempt for email: ${email}.`,
+          req: req
+        });
         return res.status(400).json({ status: false, message: 'OTP expired' });
       }
 
       // ✅ บันทึก user จริงใน users table
-      await query(
+      const result: any = await query(
         'INSERT INTO users (username, email, phone_number, password_hash) VALUES (?, ?, ?, ?)',
         [record.username, record.email, record.phone_number, record.password_hash]
       );
 
+      const newUserId = result.insertId;
+
       // ✅ อัปเดตสถานะว่า OTP ถูกใช้แล้ว
       await query('UPDATE otp_verification SET verified = 1 WHERE id = ?', [record.id]);
 
+      await logActivity({
+        user_id: newUserId,   // 👈 (ผู้ใช้ที่ถูกสร้าง)
+        actor_id: newUserId,  // 👈 (ผู้ใช้เป็นคนกระทำ)
+        actor_type: 'user',
+        action: 'CREATE_USER_SUCCESS',
+        table_name: 'users',
+        record_id: newUserId,
+        description: `User ${record.username} created successfully via OTP.`,
+        req: req,
+        new_value: { username: record.username, email: record.email }
+      });
+
       res.json({ status: true, message: 'Account verified and created successfully' });
-    } catch (err) {
+    } catch (err: any) {
+      await logActivity({
+        user_id: null,
+        actor_id: null,
+        actor_type: 'system',
+        action: 'VERIFY_OTP_EXCEPTION',
+        description: `OTP verification failed with error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+      });
       console.error(err);
       res.status(500).json({ status: false, message: 'Database error' });
     }

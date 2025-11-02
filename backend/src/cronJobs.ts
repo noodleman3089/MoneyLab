@@ -11,7 +11,7 @@ console.log('🚀 Cron job service started...');
  * - อัปเดต totalSavingOut ใน wallet
  * - คำนวณวันถัดไปตาม frequency
  */
-cron.schedule('*/1 * * * *', async () => { // '*/1 * * * *' for testing every minute for production use '0 0 * * *'
+cron.schedule('0 0 * * *', async () => { // '*/1 * * * *' for testing every minute for production use '0 0 * * *'
   console.log('⏰ Running auto saving deduction job...');
 
   try {

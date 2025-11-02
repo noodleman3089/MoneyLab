@@ -1,63 +1,70 @@
-import { Request, Response, NextFunction } from 'express'; 
-import jwt from 'jsonwebtoken'; 
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || '1234'; 
+export type ActorRoleType = 'user' | 'admin' | 'system' | 'api';
+// 1. 🚨 แก้ไขเรื่องความปลอดภัย (ใช้ SECRET_KEY จาก .env และ Fail-Fast)
+const SECRET_KEY = process.env.SECRET_KEY;
 
-// ✅ ตรวจสอบว่ามี JWT และเป็น admin หรือไม่ 
-export const verifyAdmin = (req: Request, res: Response, next: NextFunction) => { 
-  const authHeader = req.headers.authorization; 
+if (!SECRET_KEY) {
+  console.error("FATAL ERROR: SECRET_KEY is not defined in .env file.");
+  process.exit(1); // หยุดเซิร์ฟเวอร์ทันทีถ้าไม่มี Key
+}
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) { 
-    return res.status(401).json({ status: false, message: 
-      'Unauthorized: Missing token' }); 
-    } 
-    
-    const token = authHeader.split(' ')[1];
-    try { 
-      const decoded = jwt.verify(token, JWT_SECRET) as { 
-        user_id: number; role: string }; 
+// 2. ⌨️ สร้าง Interface สำหรับ Payload ใน JWT
+interface JwtPayload {
+  user_id: number;
+  username: string;
+  role: ActorRoleType;
+}
 
-// ✅ ตรวจสอบ role 
-  if (decoded.role !== 'admin') {
-    return res.status(403).json({ status: false, message: 
-    'Forbidden: Admins only' }); 
-    } 
-// ✅ เก็บข้อมูลผู้ใช้ไว้ใน req เพื่อใช้ต่อ 
-  (req as any).user = decoded; 
-  next(); 
+// 3. ⌨️ สร้าง Interface สำหรับ Request ที่มี user
+// (วิธีนี้ดีกว่าการใช้ (req as any))
+export interface AuthRequest extends Request {
+  user?: JwtPayload;
+}
 
-} catch (err) { 
-  return res.status(401).json({ status: false, message: 
-    'Invalid or expired token' }); 
-  } 
-}; 
+// ✅ (แก้ไขเล็กน้อย) ใช้ AuthRequest
+export const verifyAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
 
-export const authenticateToken = (req: Request, res: 
-  Response, next: NextFunction) => { 
-    const authHeader = req.headers['authorization']; 
-    const token = authHeader && authHeader.split(' ')[1]; 
-    if (!token) return res.status(401).json({ status: false, 
-      message: 'No token provided' }); 
-      
-jwt.verify(token, JWT_SECRET, (err, decoded) => { 
-  if (err) return res.status(403).json({ status: false, message: 
-    'Invalid token' }); 
-    (req as any).user = decoded; 
-    next(); 
-  }); 
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ status: false, message: 'Unauthorized: Missing or invalid Bearer token' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    // 1. 🚨 ใช้ SECRET_KEY ที่ปลอดภัย (ไม่ต้องใช้ !) เพราะเราเช็คด้านบนแล้ว
+    const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
+
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ status: false, message: 'Forbidden: Admins only' });
+    }
+
+    req.user = decoded; // ✅ ตอนนี้ TypeScript รู้จัก req.user แล้ว
+    next();
+
+  } catch (err) {
+    return res.status(401).json({ status: false, message: 'Invalid or expired token' });
+  }
 };
 
+// ✅ (แก้ไขใหม่) ใช้รูปแบบเดียวกับ verifyAdmin (try...catch)
+export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
 
-/**
- * Middleware สำหรับตรวจสอบว่าผู้ใช้ที่ล็อกอินมี role เป็น 'admin' หรือไม่
- */
-export const isAdmin = (req: Request, res: Response, next: NextFunction) => {
-  // req.user จะถูกสร้างโดย authenticateToken middleware
-  const user = (req as any).user;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ status: false, message: 'Unauthorized: Missing or invalid Bearer token' });
+  }
 
-  if (user && user.role === 'admin') {
-    next(); // ถ้าเป็น admin ให้ผ่านไปทำงานต่อ
-  } else {
-    res.status(403).json({ status: false, message: 'Forbidden: Admins only' });
+  const token = authHeader.split(' ')[1];
+  try {
+    // 1. 🚨 ใช้ SECRET_KEY ที่ปลอดภัย
+    const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
+
+    req.user = decoded; // ✅ TypeScript รู้จัก
+    next();
+
+  } catch (err) {
+    return res.status(401).json({ status: false, message: 'Invalid or expired token' });
   }
 };

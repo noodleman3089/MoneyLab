@@ -20,11 +20,28 @@ import notificationRoutes from './routes/notifications'; // 👈 เพิ่ม
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
 import AdminControllers from './controllers/admin';
-import dailyBudgetRoutes from './routes/daily_budget';
-import savingGoalRoutes from './routes/savingGoals';
-import walletRoutes from './routes/wallet';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const REQUIRED_ENV_VARS = [
+  'DB_HOST',
+  'DB_USER',
+  'DB_PASSWORD',
+  'DB_NAME',
+  'PORT',
+  'SECRET_KEY'
+];
+
+const missingVars = REQUIRED_ENV_VARS.filter(varName => !process.env[varName]);
+
+if (missingVars.length > 0) {
+  console.error(`FATAL ERROR: Missing required environment variables:`);
+  console.error(missingVars.join(', '));
+  console.error("Please check your .env file.");
+  process.exit(1); 
+}
+
+console.log('✅ All required environment variables are set.');
 
 console.log('ENV:', {
   DB_USER: process.env.DB_USER,
@@ -33,7 +50,7 @@ console.log('ENV:', {
 });
 
 const app = express();
-const PORT = process.env.PORT || 5000; // ใช้ Port 5000 ตาม .env
+const PORT = process.env.PORT;
 
 // --- Middlewares ---
 app.use(express.json());
@@ -43,20 +60,17 @@ app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'))); // �
 
 const dbTimezone = process.env.DB_TIMEZONE || '+07:00';
 // MySQL Connection
-const db = mysql.createConnection({
+const db = mysql.createPool({
   host: process.env.DB_HOST ?? '',
   user: process.env.DB_USER ?? '',
   password: process.env.DB_PASSWORD ?? '',
   database: process.env.DB_NAME ?? '',
   port: Number(process.env.DB_PORT) || 3306,
   timezone: dbTimezone,
-});
-db.connect(err => {
-  if (err) {
-    console.error('Database connection failed:', err.message);
-    process.exit(1);
-  }
-  console.log('Database connected successfully');
+
+  waitForConnections: true,
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 export function query(sql: string, params: any[] = []): Promise<any> {
@@ -77,7 +91,7 @@ app.use('/api/transactions', transactionRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/survey', surveyRouter);
 app.use('/api/notifications', notificationRoutes); // เพิ่ม notificationRoutes
-app.use('/api/saving-goals', savingGoalRoutes);
+app.use('/api/saving-goals', savingGoalsRoutes); 
 app.use('/api/saving-transactions', savingTransactionRoutes);
 app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตัวแปรที่ import มา
 app.use('/api/wallet', walletRouter);

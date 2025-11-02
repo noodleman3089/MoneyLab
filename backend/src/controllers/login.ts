@@ -3,9 +3,11 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../index';
+import { logActivity } from '../services/log.service';
+import { ActorRoleType } from '../middlewares/authMiddleware';
 
-const controllers_L = express.Router(); // 👈 1. [FIX] เปลี่ยนเป็น Router()
-const JWT_SECRET = process.env.JWT_SECRET || '1234';
+const controllers_L = express();
+const SECRET_KEY = process.env.SECRET_KEY;
 
 // Login
 controllers_L.post('/login',
@@ -30,18 +32,43 @@ controllers_L.post('/login',
       return res.status(401).json({ status: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
-    // 👈 3. [FIX] เปลี่ยนไปใช้ bcrypt.compare แบบ async
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    
     if (!isPasswordValid) {
-      return res.status(401).json({ status: false, message: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+      await logActivity({
+        user_id: user.user_id, // User ที่พยายาม Login
+        actor_id: user.user_id,
+        actor_type: user.role, // 'user' หรือ 'admin'
+        action: 'LOGIN_FAIL',
+        table_name: 'users',
+        record_id: user.user_id,
+        description: `Failed login attempt for ${user.username}.`,
+        req: req // 👈 ส่ง req object ไปด้วย
+      });
+      return res.status(401).send({ message: 'Invalid password', status: false });
     }
 
     await query('UPDATE users SET last_login_at = NOW() WHERE user_id = ?',[user.user_id]);
 
-    // 👈 4. [FIX] สร้าง Token ให้มีข้อมูล role
+    await logActivity({
+      user_id: user.user_id,
+      actor_id: user.user_id,
+      actor_type: user.role,
+      action: 'LOGIN_SUCCESS',
+      table_name: 'users',
+      record_id: user.user_id,
+      description: `User ${user.username} logged in.`,
+      req: req
+    });
+
+    const dbRole: string = user.role;
+    const tokenRole: ActorRoleType = (dbRole === 'admin' || dbRole === 'system' || dbRole === 'api') 
+                                      ? dbRole 
+                                      : 'user';
+
     const token = jwt.sign(
-      { user_id: user.user_id, username: user.username, role: user.role },
-      JWT_SECRET,
+      { user_id: user.user_id, username: user.username, role: tokenRole },
+      SECRET_KEY!,
       { expiresIn: '1h' }
     );
 
@@ -57,7 +84,16 @@ controllers_L.post('/login',
       }
     });
 
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: 0, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
+        actor_id: 0,
+        actor_type: 'system',
+        action: 'LOGIN_EXCEPTION',
+        description: `Login process failed with error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack } // เก็บ stack trace
+      });
     next(err);
   }
 });

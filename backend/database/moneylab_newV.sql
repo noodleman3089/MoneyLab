@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
- ========================
+-- ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',

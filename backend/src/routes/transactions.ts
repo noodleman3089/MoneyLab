@@ -1,12 +1,10 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '../index';
-import { authenticateToken } from '../middlewares/authMiddleware';
+import { authenticateToken, AuthRequest } from '../middlewares/authMiddleware';
 import { sendEmail } from '../sendEmail/sendEmail';
-
-interface AuthRequest extends Request {
-  user?: { user_id: number; role: string };
-}
+import { logActivity } from '../services/log.service';
+import moment from 'moment-timezone';
 
 const routes_T = express.Router();
 
@@ -24,7 +22,7 @@ routes_T.post(
     body('reference_id').optional().isString(),
     body('payment_source').optional().isString(),
     // 🟡 ทำให้ transaction_date optional ได้
-    body('transaction_date').optional().isDate().withMessage('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)'),
+    body('transaction_date').optional().isISO8601().withMessage('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)').toDate(),
   ],
   async (req: AuthRequest, res: Response) => {
     const errors = validationResult(req);
@@ -32,7 +30,13 @@ routes_T.post(
       return res.status(400).json({ status: false, errors: errors.array() });
     }
 
-    const userId = req.user!.user_id;
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    const userId = actor.user_id;
+
     const {
       amount,
       fee = 0,
@@ -46,10 +50,22 @@ routes_T.post(
       confidence = null
     } = req.body;
 
+    let walletId: number = 0;
+
     try {
       // ✅ ดึง category_type จาก category_id
       const cat = await query('SELECT category_type FROM category WHERE category_id = ?', [category_id]);
       if (cat.length === 0) {
+        await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: actor.role, // (สันนิษฐานว่า role ถูกต้องจาก Middleware)
+          action: 'CREATE_TRANSACTION_FAIL_CATEGORY',
+          table_name: 'transactions',
+          description: `Failed to create transaction: Category ID ${category_id} not found.`,
+          req: req,
+          new_value: req.body
+        });
         return res.status(400).json({
           status: false,
           message: 'ไม่พบ category_id นี้ในระบบ',
@@ -59,7 +75,6 @@ routes_T.post(
       const type = cat[0].category_type;
 
       // ✅ ตรวจสอบหรือสร้าง wallet
-      let walletId: number | null = null;
       const wallet = await query('SELECT wallet_id FROM wallet WHERE user_id = ? LIMIT 1', [userId]);
       if (wallet.length === 0) {
         const createWallet = await query(
@@ -67,52 +82,72 @@ routes_T.post(
           [userId, 'Main Wallet', 'THB']
         );
         walletId = createWallet.insertId;
+
+        await logActivity({
+            user_id: userId,
+            actor_id: userId,
+            actor_type: actor.role,
+            action: 'CREATE_WALLET',
+            table_name: 'wallet',
+            record_id: walletId,
+            description: `User ${userId} auto-created 'Main Wallet' during transaction.`,
+            req: req
+        });
         console.log(`🆕 สร้าง wallet ใหม่สำหรับ user_id=${userId} → wallet_id=${walletId}`);
       } else {
         walletId = wallet[0].wallet_id;
       }
 
       // ✅ ถ้าไม่มี transaction_date → ใช้ NOW()
-      const dateToUse = transaction_date || new Date().toISOString().slice(0, 10);
+      const dateToUse = transaction_date
+        ? moment(transaction_date).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss")
+        : moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
 
       // ✅ บันทึกข้อมูลลง transactions
-      await query(
+      const result: any = await query(
         `INSERT INTO transactions
-          (user_id, wallet_id, category_id, type, amount, fee, sender_name, receiver_name,
-           reference_id, payment_source, data_source, confidence, transaction_date)
+           (user_id, wallet_id, category_id, type, amount, fee, sender_name, receiver_name,
+            reference_id, payment_source, data_source, confidence, transaction_date)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
-          userId,
-          walletId,
-          category_id,
-          type,
-          amount,
-          fee,
-          sender_name || null,
-          receiver_name || null,
-          reference_id || null,
-          payment_source || null,
-          data_source,
-          confidence,
+          userId, walletId, category_id, type, amount, fee,
+          req.body.sender_name || null,
+          req.body.receiver_name || null,
+          req.body.reference_id || null,
+          req.body.payment_source || null,
+          req.body.data_source || 'manual',
+          req.body.confidence || null,
           dateToUse,
         ]
       );
+      const newTransactionId = result.insertId;
+
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: actor.role,
+          action: type === 'income' ? 'CREATE_INCOME' : 'CREATE_EXPENSE',
+          table_name: 'transactions',
+          record_id: newTransactionId,
+          description: `User ${userId} created transaction ID ${newTransactionId} (Type: ${type}, Amount: ${amount}).`,
+          req: req,
+          new_value: req.body
+      });
 
       // ✅ ตรวจเฉพาะ transaction ที่เป็นรายจ่ายเท่านั้น
       if (type === 'expense') {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = moment().tz("Asia/Bangkok").format("YYYY-MM-DD");
 
         // 🔹 ดึงงบรายวันของวันนี้ (ถ้ามี)
         const [budget]: any = await query(
           `SELECT budget_id, target_spend, 
-                  (SELECT COALESCE(SUM(amount),0) 
-                  FROM transactions 
-                  WHERE user_id = ? AND type = 'expense' 
-                  AND DATE(transaction_date) = ?) AS total_spent
-          FROM daily_budget 
-          WHERE user_id = ? AND budget_date = ? 
-          LIMIT 1`,
-          [userId, today] //  userId, today ลบไปเพราะซ้ำ
+             (SELECT COALESCE(SUM(amount),0) 
+              FROM transactions 
+              WHERE user_id = ? AND type = 'expense' AND DATE(transaction_date) = ?) AS total_spent
+           FROM daily_budget 
+           WHERE user_id = ? AND budget_date = ? 
+           LIMIT 1`,
+          [userId, today, userId, today] // 👈 แก้ไขเป็น 4 params
         );
 
         if (budget) {
@@ -147,6 +182,17 @@ routes_T.post(
               [userId, notifyType, title, message, budget_id]
             );
 
+            await logActivity({
+                user_id: userId,
+                actor_id: 0, // 👈 (ใช้ 0 เพราะเป็น System Action)
+                actor_type: 'system',
+                action: 'BUDGET_NOTIFICATION_SENT',
+                table_name: 'notifications',
+                description: `Sent budget alert (Type: ${notifyType}) to user ${userId}.`,
+                req: req,
+                new_value: { title, message }
+            });
+
             // ✅ ดึงอีเมลของผู้ใช้เพื่อส่งแจ้งเตือน
             const [userInfo]: any = await query(
               `SELECT email, username FROM users WHERE user_id = ? LIMIT 1`,
@@ -178,7 +224,18 @@ routes_T.post(
         status: true,
         message: `Transaction created successfully (type=${type}, date=${dateToUse})`,
       });
-    } catch (err) {
+    } catch (err: any) {
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: 'system',
+          action: 'CREATE_TRANSACTION_EXCEPTION',
+          table_name: 'transactions',
+          record_id: 0,
+          description: `Failed to create transaction. Error: ${err.message}`,
+          req: req,
+          new_value: { error: err.stack }
+      });
       console.error(err);
       res.status(500).json({ status: false, message: 'Database error' });
     }

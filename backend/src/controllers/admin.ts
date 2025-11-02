@@ -1,7 +1,8 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { query } from '../index';
-import { verifyAdmin } from '../middlewares/authMiddleware';
+import { verifyAdmin, AuthRequest } from '../middlewares/authMiddleware';
 import * as crypto from 'crypto';
+import { logActivity } from '../services/log.service';
 
 const routerA = express.Router();
 /**
@@ -9,11 +10,12 @@ const routerA = express.Router();
  */
 
 // READ - ดึง users ทั้งหมด
-routerA.get('/users', verifyAdmin, async (req: Request, res: Response) => {
+routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const limit = Number(req.query.limit) || 50;
     const offset = Number(req.query.offset) || 0;
     const role = req.query.role ? String(req.query.role).trim() : null;
+    const actor = req.user;
 
     const safeLimit = Math.min(limit, 100);
     const params: any[] = [];
@@ -39,6 +41,19 @@ routerA.get('/users', verifyAdmin, async (req: Request, res: Response) => {
     const totalResult = await query(totalSql, role ? [role] : []);
     const total = totalResult[0].total;
 
+    if (actor) {
+      await logActivity({
+        user_id: 0,
+        actor_id: actor.user_id,
+        actor_type: 'admin',
+        action: 'VIEW_ALL_USERS',
+        table_name: 'users',
+        record_id: 0,
+        description: `Admin ${actor.username} fetched user list (Limit: ${safeLimit}, Offset: ${offset}, Role: ${role || 'all'}).`,
+        req: req
+      });
+    }
+
     res.json({
       status: true,
       message: 'Users fetched successfully',
@@ -53,14 +68,30 @@ routerA.get('/users', verifyAdmin, async (req: Request, res: Response) => {
       filter: role ? { role } : null
     });
   } catch (err: any) {
+    const actor = req.user; // ดึง actor จาก req
+    
+    await logActivity({
+      user_id: 0,
+      actor_id: actor?.user_id || 0, // 👈 ใช้ ?. ป้องกัน actor เป็น undefined
+      actor_type: 'system',
+      action: 'VIEW_ALL_USERS_EXCEPTION',
+      description: `Failed to fetch users. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack } // 👈 เก็บ stack trace ไว้เลย
+    });
+
     res.status(500).json({ status: false, message: 'Failed to fetch users', error: err.message });
   }
 });
 
 // READ - ดึงข้อมูลผู้ใช้คนเดียวแบบละเอียด (สำหรับหน้า User Detail)
-routerA.get('/users/:id', verifyAdmin, async (req: Request, res: Response) => {
+routerA.get('/users/:id', verifyAdmin, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const actor = req.user;
   try {
-    const { id } = req.params;
+    if (!actor) { // 👈 เพิ่ม Guard Clause
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
 
     // 1. ดึงข้อมูลหลักจากตาราง users
     const userSql = `SELECT user_id, username, email, phone_number, role, created_at, last_login_at FROM users WHERE user_id = ?`;
@@ -82,6 +113,17 @@ routerA.get('/users/:id', verifyAdmin, async (req: Request, res: Response) => {
     const transactionsSql = `SELECT * FROM transactions WHERE user_id = ? ORDER BY transaction_date DESC LIMIT 20`;
     const transactions = await query(transactionsSql, [id]);
 
+    await logActivity({
+      user_id: Number(id),
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'VIEW_USER_DETAIL',
+      table_name: 'users',
+      record_id: id,
+      description: `Admin ${actor.username} viewed details for user ID: ${id}.`,
+      req: req
+    });
+
     res.json({
       status: true,
       data: {
@@ -92,31 +134,83 @@ routerA.get('/users/:id', verifyAdmin, async (req: Request, res: Response) => {
       }
     });
   } catch (err: any) {
+    await logActivity({
+      user_id: Number(id) || 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'system',
+      action: 'VIEW_USER_DETAIL_EXCEPTION',
+      description: `Failed to fetch user details for ID: ${id}. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
     res.status(500).json({ status: false, message: 'Failed to fetch user details', error: err.message });
   }
 });
 
 // DELETE - ลบ user
-routerA.delete('/users/:id', verifyAdmin, async (req: Request, res: Response) => {
+routerA.delete('/users/:id', verifyAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const sql = `DELETE FROM users WHERE user_id = ?`;
-    const result = await query(sql, [id]);
+    const actor = req.user;
 
-    if (result.affectedRows === 0) {
+    // 1. ตรวจสอบ Actor
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
+
+    // 2. ตรวจสอบว่าผู้ใช้มีอยู่จริง
+    const existing = await query('SELECT user_id, username FROM users WHERE user_id = ?', [id]);
+    if (existing.length === 0) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
+    const targetUsername = existing[0].username;
+
+    // 3.  บันทึก Log 
+    await logActivity({
+      user_id: Number(id),
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'DELETE_USER',
+      table_name: 'users',
+      record_id: id,
+      description: `Admin ${actor.username} (ID: ${actor.user_id}) deleted user ${targetUsername} (ID: ${id}).`,
+      req: req
+    });
+
+    // 4. ลบผู้ใช้
+    const sql = `DELETE FROM users WHERE user_id = ?`;
+    await query(sql, [id]);
+
     res.json({ status: true, message: 'User deleted successfully' });
+
   } catch (err: any) {
+    // 5. บันทึก Log เมื่อเกิด Error
+    const actor = req.user;
+    const { id } = req.params;
+
+    await logActivity({
+      user_id: Number(id) || 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'system',
+      action: 'DELETE_USER_EXCEPTION',
+      description: `Failed to delete user ID: ${id}. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
+
     res.status(500).json({ status: false, message: 'Failed to delete user', error: err.message });
   }
 });
 
 // UPDATE - ระงับบัญชีผู้ใช้ (Suspend)
-routerA.put('/users/:id/suspend', verifyAdmin, async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
+routerA.put('/users/:id/suspend', verifyAdmin, async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const actor = req.user;
 
+  try {
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
     // เราจะเปลี่ยน role ของ user เป็น 'user' และล้าง password_hash เพื่อให้ล็อกอินไม่ได้
     // นี่เป็นวิธีหนึ่งในการ "ระงับ" บัญชี
     // หรือถ้าคุณมีคอลัมน์ status ENUM('active', 'suspended') ก็จะดีกว่า
@@ -132,8 +226,31 @@ routerA.put('/users/:id/suspend', verifyAdmin, async (req: Request, res: Respons
     if (result.affectedRows === 0) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
+
+    await logActivity({
+      user_id: Number(id),
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'SUSPEND_USER',
+      table_name: 'users',
+      record_id: id,
+      description: `Admin ${actor.username} suspended user ID: ${id}.`,
+      req: req
+    });
+
     res.json({ status: true, message: 'User suspended successfully' });
+
   } catch (err: any) {
+    await logActivity({
+      user_id: Number(id) || 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'system',
+      action: 'SUSPEND_USER_EXCEPTION',
+      description: `Failed to suspend user ID: ${id}. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
+
     res.status(500).json({ status: false, message: 'Failed to suspend user', error: err.message });
   }
 });
@@ -143,13 +260,28 @@ routerA.put('/users/:id/suspend', verifyAdmin, async (req: Request, res: Respons
  */
 
 // GET /api/dashboard/summary - ดึงข้อมูลตัวเลขสรุปทั้งหมด
-routerA.get('/dashboard/summary', verifyAdmin, async (req: Request, res: Response) => {
+routerA.get('/dashboard/summary', verifyAdmin, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
   try {
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
+
     const [totalUsers] = await query("SELECT COUNT(*) as count FROM users");
     const [totalTransactions] = await query("SELECT COUNT(*) as count FROM transactions");
     const [totalIncome] = await query("SELECT SUM(amount) as total FROM transactions WHERE type = 'income'");
     const [totalExpense] = await query("SELECT SUM(amount) as total FROM transactions WHERE type = 'expense'");
     const [newUsersToday] = await query("SELECT COUNT(*) as count FROM users WHERE DATE(created_at) = CURDATE()");
+
+    await logActivity({
+      user_id: 0,
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_SUMMARY',
+      table_name: 'transactions',
+      description: `Admin ${actor.username} viewed dashboard summary.`,
+      req: req
+    });
 
     res.json({
       status: true,
@@ -162,13 +294,27 @@ routerA.get('/dashboard/summary', verifyAdmin, async (req: Request, res: Respons
       }
     });
   } catch (err: any) {
+    await logActivity({
+      user_id: 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_SUMMARY_EXCEPTION',
+      description: `Failed to view dashboard summary. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
+
     res.status(500).json({ status: false, message: 'Failed to fetch dashboard summary', error: err.message });
   }
 });
 
 // GET /api/dashboard/expense-chart - ดึงข้อมูลสำหรับกราฟแท่งรายจ่าย
-routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: Request, res: Response) => {
+routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
   try {
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
     // ดึงข้อมูลรายจ่ายรวมย้อนหลัง 6 เดือน
     const sql = `
       SELECT DATE_FORMAT(transaction_date, '%Y-%m') AS month, SUM(amount) AS total_expense
@@ -178,15 +324,39 @@ routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: Request, res: R
       ORDER BY month ASC;
     `;
     const data = await query(sql, []);
+
+    await logActivity({
+      user_id: 0,
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_EXPENSE_CHART',
+      table_name: 'transactions',
+      description: `Admin ${actor.username} viewed dashboard expense chart.`,
+      req: req
+    });
+
     res.json({ status: true, data });
   } catch (err: any) {
+    await logActivity({
+      user_id: 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_EXPENSE_CHART_EXCEPTION',
+      description: `Failed to view dashboard expense chart. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
     res.status(500).json({ status: false, message: 'Failed to fetch expense chart data', error: err.message });
   }
 });
 
 // GET /api/dashboard/income-chart - ดึงข้อมูลสำหรับกราฟวงกลมรายรับ
-routerA.get('/dashboard/income-chart', verifyAdmin, async (req: Request, res: Response) => {
+routerA.get('/dashboard/income-chart', verifyAdmin, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
   try {
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
     const sql = `
       SELECT c.category_name, SUM(t.amount) AS total_amount
       FROM transactions t
@@ -196,21 +366,56 @@ routerA.get('/dashboard/income-chart', verifyAdmin, async (req: Request, res: Re
       ORDER BY total_amount DESC;
     `;
     const data = await query(sql, []);
+    await logActivity({
+      user_id: 0,
+      actor_id: actor.user_id,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_INCOME_CHART',
+      table_name: 'transactions',
+      description: `Admin ${actor.username} viewed dashboard income chart.`,
+      req: req
+    });
+
     res.json({ status: true, data });
   } catch (err: any) {
+    await logActivity({
+      user_id: 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'admin',
+      action: 'VIEW_DASHBOARD_INCOME_CHART_EXCEPTION',
+      description: `Failed to view dashboard income chart. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
     res.status(500).json({ status: false, message: 'Failed to fetch income chart data', error: err.message });
   }
 });
 
-routerA.delete('/users/soft/:id', verifyAdmin, async (req: Request, res: Response) => {
+routerA.delete('/users/soft/:id', verifyAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const actor = req.user;
+
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid admin token data' });
+    }
 
     // ตรวจสอบว่าผู้ใช้อยู่จริง
     const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
+
+    await logActivity({
+      user_id: Number(id) || 0,        // 👈 User ที่ "ถูกลบ"
+      actor_id: actor.user_id,  // 👈 Admin ที่ "เป็นคนลบ"
+      actor_type: 'admin',
+      action: 'SOFT_DELETE_USER',
+      table_name: 'users',
+      record_id: id,
+      description: `Admin ${actor.username} (ID: ${actor.user_id}) soft-deleted user ID: ${id}.`,
+      req: req
+    });
 
     // สร้าง hash สำหรับแทนข้อมูลส่วนตัว
     const hash = crypto.createHash('sha256').update(`deleted-${id}-${Date.now()}`).digest('hex');
@@ -237,7 +442,19 @@ routerA.delete('/users/soft/:id', verifyAdmin, async (req: Request, res: Respons
       message: 'User data hashed and account deactivated successfully',
     });
   } catch (err: any) {
-    console.error('❌ Delete (hash) user error:', err);
+    const actor = req.user;
+    const { id } = req.params;
+
+    await logActivity({
+      user_id: Number(id) || 0,
+      actor_id: actor?.user_id || 0,
+      actor_type: 'system',
+      action: 'SOFT_DELETE_USER_EXCEPTION',
+      description: `Failed to soft-delete user ID: ${id}. Error: ${err.message}`,
+      req: req,
+      new_value: { error: err.stack }
+    });
+
     res.status(500).json({
       status: false,
       message: 'Failed to hash user data',
