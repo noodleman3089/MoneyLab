@@ -152,14 +152,17 @@ export default function UserSummaryDashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={incomeData}
+                  data={incomeData.map((item: IncomeChartData) => ({
+                    name: item.category_name,
+                    value: item.total_amount
+                  }))}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={120}
                   paddingAngle={5}
-                  dataKey="total_amount"
-                  nameKey="category_name"
+                  dataKey="value"
+                  nameKey="name"
                 >
                   {incomeData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

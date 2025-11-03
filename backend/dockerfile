@@ -37,6 +37,10 @@ RUN echo '#!/bin/sh' > /wait-for.sh && \
 # --- [SECURITY BEST PRACTICE] ---
 # สร้าง user ที่ไม่มีสิทธิ์ root และเปลี่ยนไปใช้ user นั้น
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# สร้างโฟลเดอร์ uploads และให้สิทธิ์กับ appuser ก่อนสลับ user
+RUN mkdir -p /app/uploads && chown -R appuser:appgroup /app
+
 USER appuser
 
 # Expose the API port

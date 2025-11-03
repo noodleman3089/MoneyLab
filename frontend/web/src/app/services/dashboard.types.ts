@@ -14,6 +14,7 @@ export interface ExpenseChartData {
 export interface IncomeChartData {
   category_name: string;
   total_amount: number;
+  [key: string]: any;
 }
 
 export interface ApiResponse<T> {
