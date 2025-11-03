@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
+
+import '../services/authe_service.dart'; // 👈 1. Import service
 
 class ResetPasswordScreen extends StatefulWidget {
   final String? token; // รับ token จาก arguments (อาจเป็น null ถ้าเข้ามาผิดทาง)
@@ -22,6 +22,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   bool _isLoading = false;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
+  final AutheService _authService = AutheService(); // 👈 2. สร้าง instance ของ service
 
   @override
   void initState() {
@@ -75,17 +76,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      final response = await http.post(
-        Uri.parse('http://localhost:4000/api/reset-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'token': widget.token,
-          'newPassword': _newPasswordController.text,
-        }),
+      // 👈 3. [REFACTORED] เรียกใช้ service แทนการยิง API ตรงๆ
+      final result = await _authService.resetPassword(
+        token: widget.token!, // มั่นใจว่า token ไม่เป็น null จากการเช็คใน initState
+        password: _newPasswordController.text,
+        confirmPassword: _confirmPasswordController.text,
       );
-
-      final result = jsonDecode(response.body);
-
+      
       if (!mounted) return;
 
       if (result['status'] == true) {
@@ -119,10 +116,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      print('Reset password error: $error');
+      // 👈 4. [REFACTORED] แสดงข้อความ error ที่โยนมาจาก service
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Network error. Please try again.'),
+        SnackBar(
+          content: Text(error.toString().replaceFirst("Exception: ", "")),
           backgroundColor: Colors.red,
           duration: Duration(seconds: 3),
         ),

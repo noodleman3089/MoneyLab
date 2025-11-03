@@ -1,15 +1,19 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { query } from '../index';
 import { authenticateToken, AuthRequest } from '../middlewares/authMiddleware';
-import { logActivity } from '../services/log.service'; // 👈 [FIX] แก้ไขการ import ให้ถูกต้อง
-
+import { logActivity } from '../services/log.service';
 const routerSurvey = express.Router();
 
 /**
  * 📋 GET /api/survey/questions
  * ดึงคำถามทั้งหมดจาก DB
  */
-routerSurvey.get('/questions', authenticateToken, async (req: Request, res: Response) => {
+routerSurvey.get('/questions', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
   try {
     const questions = await query(`
       SELECT question_id, question_text, question_type, options
@@ -26,8 +30,18 @@ routerSurvey.get('/questions', authenticateToken, async (req: Request, res: Resp
     }));
 
     res.json({ status: true, data: formatted });
-  } catch (err) {
+  } catch (err: any) {
     console.error('❌ Fetch survey questions error:', err);
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'system',
+        action: 'FETCH_SURVEY_QUESTIONS_EXCEPTION',
+        table_name: 'survey_question',
+        description: `Failed to fetch survey questions. Error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+    });
     res.status(500).json({
       status: false,
       message: 'Failed to fetch survey questions',
@@ -91,11 +105,25 @@ routerSurvey.post('/submit', authenticateToken, async (req: AuthRequest, res: Re
   }
 });
 
-routerSurvey.post('/answers', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerSurvey.post('/answers', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
   const { answers } = req.body;
 
   if (!Array.isArray(answers) || answers.length === 0) {
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'SUBMIT_SURVEY_FAIL_INVALID_INPUT',
+        table_name: 'survey_answer',
+        description: 'Survey submission failed: answers was not a valid array or was empty.',
+        req: req,
+        new_value: req.body
+    });
     return res.status(400).json({
       status: false,
       message: 'กรุณาส่งข้อมูล answers ในรูปแบบ array'
@@ -133,6 +161,16 @@ routerSurvey.post('/answers', authenticateToken, async (req: Request, res: Respo
         );
       }
     }
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'SUBMIT_SURVEY_SUCCESS',
+        table_name: 'survey_answer',
+        description: `User ${userId} submitted/updated ${answers.length} survey answers.`,
+        req: req,
+        new_value: req.body
+    });
 
     res.json({
       status: true,

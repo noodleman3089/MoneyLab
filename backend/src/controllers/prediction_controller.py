@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from ..services.prediction_service import prediction_service
+# 👈 [THE FIX] เปลี่ยนจาก Relative import '..' มาเป็น Absolute import จาก 'src'
+from src.services.prediction_service import prediction_service
 
 prediction_bp = Blueprint('prediction_bp', __name__)
 

@@ -1,12 +1,18 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { query } from '../index';
-import { authenticateToken } from '../middlewares/authMiddleware';
+import { authenticateToken, AuthRequest } from '../middlewares/authMiddleware';
+import { logActivity } from '../services/log.service';
 
 const routerD = express.Router();
 
 /* ------------------ 1️⃣ POST: ตั้งงบรายวัน ------------------ */
-routerD.post('/set', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerD.post('/set', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
+
   const { target_spend, date } = req.body;
   const budgetDate = date || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 
@@ -17,20 +23,45 @@ routerD.post('/set', authenticateToken, async (req: Request, res: Response) => {
       ON DUPLICATE KEY UPDATE target_spend = VALUES(target_spend), updated_at = NOW()
     `, [userId, budgetDate, target_spend]);
 
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'SET_DAILY_BUDGET',
+        table_name: 'daily_budget',
+        description: `User ${userId} set budget for ${budgetDate} to ${target_spend}.`,
+        req: req,
+        new_value: { budgetDate, target_spend }
+    });
+
     res.json({
       status: true,
       message: `ตั้งงบรายวันเรียบร้อย`,
       data: { budgetDate, target_spend }
     });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'system',
+        action: 'SET_DAILY_BUDGET_EXCEPTION',
+        table_name: 'daily_budget',
+        description: `Failed to set budget for ${budgetDate}. Error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ status: false, message: 'Database error' });
   }
 });
 
 /* ------------------ 2️⃣ GET: ดูงบรายวันของวันนี้ ------------------ */
-routerD.get('/today', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerD.get('/today', authenticateToken, async (req: AuthRequest, res: Response) => {
+ const actor = req.user;
+ if (!actor) {
+   return res.status(401).json({ status: false, message: 'Invalid token data' });
+ }
+ const userId = actor.user_id;
 
   try {
     const [budget] = await query(`
@@ -66,32 +97,81 @@ routerD.get('/today', authenticateToken, async (req: Request, res: Response) => 
 });
 
 /* ------------------ 3️⃣ PUT: อัปเดตงบรายวัน ------------------ */
-routerD.put('/update', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerD.put('/update', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
+
   const { target_spend, date } = req.body;
   const budgetDate = date || new Date().toISOString().split('T')[0];
 
   try {
-    const result = await query(`
+    const [oldBudget] = await query(
+      "SELECT target_spend FROM daily_budget WHERE user_id = ? AND budget_date = ?",
+      [userId, budgetDate]
+    );
+
+    if (!oldBudget) {
+      await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'UPDATE_BUDGET_FAIL_NOT_FOUND',
+        table_name: 'daily_budget',
+        description: `User ${userId} failed to update budget for ${budgetDate}: Not found.`,
+        req: req,
+        new_value: { budgetDate, target_spend }
+      });
+      return res.status(404).json({ status: false, message: 'ไม่พบนงบของวันดังกล่าว' });
+    }
+
+    const old_target_spend = oldBudget.target_spend;
+
+    await query(`
       UPDATE daily_budget
       SET target_spend = ?, updated_at = NOW()
       WHERE user_id = ? AND budget_date = ?
     `, [target_spend, userId, budgetDate]);
 
-    if ((result as any).affectedRows === 0) {
-      return res.status(404).json({ status: false, message: 'ไม่พบนงบของวันดังกล่าว' });
-    }
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'UPDATE_DAILY_BUDGET',
+        table_name: 'daily_budget',
+        description: `User ${userId} updated budget for ${budgetDate}.`,
+        req: req,
+        old_value: { target_spend: old_target_spend },
+        new_value: { target_spend: target_spend }
+    });
 
     res.json({ status: true, message: 'อัปเดตงบรายวันสำเร็จ' });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'system',
+        action: 'UPDATE_BUDGET_EXCEPTION',
+        table_name: 'daily_budget',
+        description: `Failed to update budget for ${budgetDate}. Error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ status: false, message: 'Database error' });
   }
 });
 
 /* ------------------ 4️⃣ GET: สรุปย้อนหลังรายวัน ------------------ */
-routerD.get('/summary', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerD.get('/summary', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
+
   const { start_date, end_date } = req.query;
 
   try {
@@ -125,8 +205,12 @@ routerD.get('/summary', authenticateToken, async (req: Request, res: Response) =
 });
 
 /* ------------------ 5️⃣ GET: ตรวจสอบสถานะงบวันนี้ ------------------ */
-routerD.get('/check', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerD.get('/check', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+    return res.status(401).json({ status: false, message: 'Invalid token data' });
+  }
+  const userId = actor.user_id;
 
   try {
     const [row] = await query(`

@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// test/widget_test.dart
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:mobile/main.dart';
+import 'package:mobile/main.dart'; // 👈 import main.dart ของคุณ
+import 'package:provider/provider.dart'; // 👈 import provider
+import 'package:mobile/services/goal_service.dart'; // 👈 import service
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Welcome screen smoke test', (WidgetTester tester) async {
+    // 1. สร้าง Service (จำเป็นเพราะ main.dart เรียกใช้)
+    final goalService = GoalService(); 
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // 2. Build แอปของคุณโดยหุ้มด้วย Provider ที่จำเป็น
+    await tester.pumpWidget(
+      ChangeNotifierProvider(
+        create: (context) => goalService,
+        child: const MyApp(),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // 3. ตรวจสอบว่ามีข้อความ "MoneyLab"
+    // (ใช้ findsWidgets เพราะมันอาจมีหลายที่)
+    expect(find.text('MoneyLab'), findsWidgets);
 
-    // Verify that our counter has incremented.
+    // 4. ตรวจสอบว่ามีปุ่ม "Login" และ "Sign Up"
+    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('Sign Up'), findsOneWidget);
+
+    // 5. ตรวจสอบว่า *ไม่มี* ข้อความของแอปนับเลข
     expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
   });
 }

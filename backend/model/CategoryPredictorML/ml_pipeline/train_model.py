@@ -1,13 +1,15 @@
 # train_model.py
-
+import sys
 import pandas as pd
 from sklearn.model_selection import TimeSeriesSplit
 import os
 
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'category_predictor'))
 # Import คลาสและฟังก์ชันที่เราสร้าง
 from category_predictor.model import CategoryPredictorML # <-- แก้ไข Path ที่ถูกต้อง
 from app.data_loader import fetch_training_data
-from app.feature_engineering import engineer_features # <-- 1. Import ฟังก์ชัน
+from app.feature_engineering import engineer_features 
+from category_predictor.model import CategoryPredictorML# <-- 1. Import ฟังก์ชัน
 
 # --- 1. กำหนดค่าคงที่และ Features ---
 USER_ID_TO_TRAIN = 1

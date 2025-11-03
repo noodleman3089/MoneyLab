@@ -62,7 +62,7 @@ class RuleBasedPredictor:
             if keyword in text_to_check:
                 # เจอปุ๊บ! คืนค่าทันที
                 return {
-                    'predicted_category': category,
+                    'predicted_category_name': category, # 👈 [THE FIX] เปลี่ยน Key
                     'confidence': 0.95, # เรามั่นใจใน Rule เสมอ
                     'method': 'rule_based_keyword',
                     'need_ml': False # ไม่ต้องส่งต่อ
@@ -70,7 +70,7 @@ class RuleBasedPredictor:
                 
         # 3. ถ้าไม่เจอคีย์เวิร์ดเลย
         return {
-            'predicted_category': None,
+            'predicted_category_name': None, # 👈 [THE FIX] เปลี่ยน Key
             'confidence': 0.0,
             'method': 'rule_based_failed',
             'need_ml': True # "ส่งต่อให้ ML จัดการ!"
