@@ -1,28 +1,35 @@
 # Dockerfile.express
 FROM python:3.12-slim
 
-# 1. ตั้ง working directory
+# 1. ติดตั้ง system dependencies สำหรับ LightGBM
+RUN apt-get update && apt-get install -y \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. ตั้ง working directory
 WORKDIR /usr/src/app
 
-# 2. คัดลอกไฟล์ requirements ก่อนเพื่อใช้ cache
+# 3. คัดลอกไฟล์ requirements ก่อนเพื่อใช้ cache
 COPY ./requirements.txt .
 
-# 3. ติดตั้ง dependencies
+# 4. ติดตั้ง dependencies (รวม Flask และ Gunicorn แล้ว)
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install gunicorn # ติดตั้ง Gunicorn สำหรับ Production
 
-# 4. คัดลอกโค้ดทั้งหมดของ backend เข้า container
+# 5. คัดลอกโค้ดทั้งหมดของ backend เข้า container
 # เรา copy ทั้งหมดเพราะ run.py, src, และ model อยู่ใน context เดียวกัน
 COPY . .
+
+# 6. ตั้งค่า PYTHONPATH ให้ Python หา module CategoryPredictorML ได้
+ENV PYTHONPATH="${PYTHONPATH}:/usr/src/app/model/CategoryPredictorML"
 
 # --- [SECURITY BEST PRACTICE] ---
 # สร้าง user ที่ไม่มีสิทธิ์ root และเปลี่ยนไปใช้ user นั้น
 RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
 USER appuser
 
-# 5. expose port สำหรับ API
+# 7. expose port สำหรับ API
 EXPOSE 5001
 
-# 6. รัน backend service ด้วย Gunicorn
+# 8. รัน backend service ด้วย Gunicorn
 # ชี้ไปที่ 'app' object ที่อยู่ในไฟล์ 'run.py'
 CMD ["gunicorn", "--bind", "0.0.0.0:5001", "run:app"]
