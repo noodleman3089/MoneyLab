@@ -1,6 +1,7 @@
 # Miscellaneous
 *.class
 *.log
+*.pvc
 *.swp
 .DS_Store
 .atom/
