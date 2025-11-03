@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+// Enum for Transaction Type
+enum TransactionType {
+  income,
+  expense,
+}
+
 class DailySummary {
   final double dailyGoal;
   final double currentSpending;

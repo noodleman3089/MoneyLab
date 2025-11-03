@@ -315,4 +315,99 @@ routes_T.post(
   }
 );
 
+// ( ... imports และโค้ด GET /daily, POST / ... )
+
+/* -------------------------------------------------
+  ⭐️ [NEW] GET: /api/transactions/summary
+  ดึงข้อมูลสรุปทั้งหมดสำหรับหน้า SpendingSummary
+  -------------------------------------------------
+*/
+routes_T.get(
+  '/summary',
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.user_id;
+    if (!userId) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    try {
+      // 1. ดึงยอดรวม (สำหรับ Summary Cards)
+      const [totals]: any = await query(
+        `SELECT 
+          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'income') AS totalIncome,
+          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'expense') AS totalExpense
+        `,
+        [userId, userId]
+      );
+      const balance = totals.totalIncome - totals.totalExpense;
+
+      // 2. ดึงสัดส่วนรายจ่าย (สำหรับ Pie Chart)
+      // (JOIN กับ category เพื่อเอา 'color_hex' ที่เราเพิ่มใน .sql)
+      const categorySummary: any = await query(
+        `SELECT c.category_name, c.color_hex, SUM(t.amount) AS amount
+         FROM transactions t
+         JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ? AND t.type = 'expense'
+         GROUP BY c.category_id, c.category_name, c.color_hex
+         ORDER BY amount DESC`,
+        [userId]
+      );
+
+      // 3. ดึงสรุปรายเดือน (สำหรับ Bar Chart)
+      const monthlyData: any = await query(
+        `SELECT 
+          DATE_FORMAT(transaction_date, '%Y-%m') AS month,
+          SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income,
+          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense
+         FROM transactions
+         WHERE user_id = ? AND transaction_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY DATE_FORMAT(transaction_date, '%Y-%m')
+         ORDER BY month ASC`, // เรียงจากเก่าไปใหม่
+        [userId]
+      );
+
+      // 4. ดึงรายการล่าสุด (Recent Transactions)
+      const recentTransactions: any = await query(
+        `SELECT t.*, c.category_name
+         FROM transactions t
+         JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ?
+         ORDER BY t.transaction_date DESC
+         LIMIT 10`, // ดึง 10 รายการล่าสุด
+        [userId]
+      );
+
+      // 5. ส่งข้อมูลทั้งหมดกลับไป
+      res.json({
+        status: true,
+        data: {
+          totals: {
+            totalIncome: parseFloat(totals.totalIncome),
+            totalExpense: parseFloat(totals.totalExpense),
+            balance: balance,
+          },
+          categorySummary: categorySummary.map((item: any) => ({
+             ...item,
+             amount: parseFloat(item.amount)
+          })),
+          monthlyData: monthlyData.map((item: any) => ({
+             ...item,
+             income: parseFloat(item.income),
+             expense: parseFloat(item.expense)
+          })),
+          recentTransactions: recentTransactions.map((item: any) => ({
+             ...item,
+             amount: parseFloat(item.amount)
+          })),
+        },
+      });
+    } catch (err: any) {
+      console.error('Error fetching spending summary:', err);
+      logActivity({ user_id: userId, actor_id: userId, actor_type: 'system', action: 'FETCH_SUMMARY_EXCEPTION', description: `Error: ${err.message}`, req });
+      res.status(500).json({ status: false, message: 'Database error while fetching summary.' });
+    }
+  }
+);
+
 export default routes_T;
