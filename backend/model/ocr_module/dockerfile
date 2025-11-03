@@ -43,4 +43,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
 # 8️⃣ รัน Flask app (ไม่ใช่ extract_receipt.py โดยตรง)
-CMD ["python", "extract_receipt.py","images/test_receipt.jpg"]
+# ใช้ gunicorn เพื่อรัน Flask app ที่ชื่อ 'app' ในไฟล์ 'extract_receipt.py'
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "extract_receipt:app"]
