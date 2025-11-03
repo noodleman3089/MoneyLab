@@ -1,16 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/pages/Questionnaire.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'services/goal_service.dart';
+import 'package:mobile/pages/goal_page.dart';
+import 'package:provider/provider.dart';
+
 import 'pages/authentication/login.dart';
 import 'pages/authentication/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
 import 'pages/Test/TestPage.dart';
+
 // import 'pages/Additional.dart';
 // import 'pages/UserProfilePage.dart' as userprofile;
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (context) => GoalService(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

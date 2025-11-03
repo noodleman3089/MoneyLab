@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'select_category_page.dart';
-import '../services/transaction_service.dart';
+import '../../services/transaction_service.dart';
 
 class AddTransactionPage extends StatefulWidget {
   final String transactionType; // 'income' or 'expense'

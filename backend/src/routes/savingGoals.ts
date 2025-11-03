@@ -36,7 +36,6 @@ routerG.post(
       contribution_amount,
       frequency,
       start_date,
-      next_deduction_date,
     } = req.body;
 
     try {
@@ -79,8 +78,6 @@ routerG.post(
       } else {
         walletId = walletRows[0].wallet_id;
       }
-
-      const dateToUse = start_date || new Date().toISOString().slice(0, 10);
 
       let nextDate: Date | null = null;
       const now = new Date();
@@ -208,6 +205,10 @@ routerG.put(
     body('next_deduction_date').optional().isISO8601().toDate(),
   ],
   async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ status: false, errors: errors.array() });
+    }
     const actor = req.user;
   if (!actor) {
       return res.status(401).json({ status: false, message: 'Invalid token data' });
@@ -216,15 +217,30 @@ routerG.put(
     const userId = actor.user_id;
     const goalId = req.params.id;
 
-    const fields = req.body;
-    const setClause = Object.keys(fields)
-      .map((key) => `${key} = ?`)
-      .join(', ');
-    const values = [...Object.values(fields), goalId, userId];
+    const allowedFields: { [key: string]: any } = {};
+    const whitelist = [
+      'goal_name', 
+      'target_amount', 
+      'contribution_amount', 
+      'frequency', 
+      'next_deduction_date',
+      'current_amount'
+    ];
 
-    if (Object.keys(fields).length === 0) {
+    for (const key of whitelist) {
+      if (req.body[key] !== undefined) {
+        allowedFields[key] = req.body[key];
+      }
+    }
+
+    if (Object.keys(allowedFields).length === 0) {
       return res.status(400).json({ status: false, message: 'ไม่มีข้อมูลที่จะแก้ไข' });
     }
+
+    const setClause = Object.keys(allowedFields)
+      .map((key) => `${key} = ?`)
+      .join(', ');
+    const values = [...Object.values(allowedFields), goalId, userId];
 
     try {
       const [oldGoal] = await query("SELECT * FROM saving_goals WHERE goal_id = ? AND user_id = ?", [goalId, userId]);

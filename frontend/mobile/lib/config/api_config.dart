@@ -33,5 +33,10 @@ class ApiConfig {
   // --- Wallet Endpoint ---
   static String get walletUrl => '$apiUrl/wallet';
 
+  // --- Goal Endpoints ---
+  static String get savingGoalsUrl => '$apiUrl/saving-goals';
+
+  static String get categoriesUrl => '$apiUrl/categories';
+
   // TODO: เพิ่ม Endpoints อื่นๆ ที่นี่ เช่น transactions, goals, etc.
 }
