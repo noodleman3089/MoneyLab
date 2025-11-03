@@ -1,45 +1,112 @@
-version: "3.9"
+
+version: '3.8'
 
 services:
+  # 1. Database Service
   mysql:
     build:
       context: ./backend/database
+      dockerfile: dockerfile
     image: jirawatrmutto/moneylab-mysql:latest
+    container_name: moneylab-mysql
+    restart: unless-stopped
     ports:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: Time3672
+      MYSQL_DATABASE: moneylab
 
-  express:
+  # 2. Backend Express.js API Service (Main API)
+  backend-express:
     build:
       context: ./backend
-      
+      dockerfile: dockerfile # ใช้ d:\MoneyLab\backend\dockerfile
     image: jirawatrmutto/moneylab-express:latest
+    container_name: moneylab-express-api
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - backend-ml-api # Express ต้องรอให้ ML API พร้อม
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=Time3672
+      - DB_NAME=moneylab
+      - DB_PORT=3306
+      - DB_TIMEZONE=+07:00
+      - SECRET_KEY=27271732187egfdjapojasckjbfqgwihfaiyugb
+      - EMAIL_HOST=smtp.gmail.com
+      - EMAIL_PORT=587
+      - EMAIL_USER=darknightdellons@gmail.com
+      - EMAIL_PASS=qlmr mjvc czfe izmd
+      - PREDICTION_API_URL=http://backend-ml-api:5001 # URL สำหรับเรียก ML API
+
+  # 3. Backend Python ML Prediction Service (Flask API)
+  backend-ml-api:
+    build:
+      context: ./backend
+      dockerfile: dockerfile.express # ใช้ d:\MoneyLab\backend\dockerfile.express
+    image: jirawatrmutto/moneylab-ml-api:latest
+    container_name: moneylab-ml-api
+    restart: unless-stopped
     depends_on:
       - mysql
     ports:
-      - "5000:5000"
+      - "5001:5001"
+    volumes:
+      # Mount models เข้าไปใน container เพื่อให้โหลด .joblib ได้
+      - ./backend/model/CategoryPredictorML/models:/usr/src/app/model/CategoryPredictorML/models
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=Time3672
+      - DB_NAME=moneylab
 
-  flask:
+  # 4. Backend Python OCR Service (Flask API)
+  backend-ocr-api:
     build:
       context: ./backend/model/ocr_module
-      
-    image: jirawatrmutto/moneylab-flask:latest
-    depends_on:
-      - mysql
+      dockerfile: dockerfile
+    image: jirawatrmutto/moneylab-ocr-api:latest
+    container_name: moneylab-ocr-api
+    restart: unless-stopped
     ports:
       - "8000:8000"
 
+  # 5. Frontend Web Service (Next.js/Nginx)
   web:
     build:
       context: ./frontend/web
+      dockerfile: dockerfile
     image:  jirawatrmutto/moneylabe-web:latest
+    container_name: moneylab-web
+    restart: unless-stopped
     depends_on:
-      - express
-      - flask
-     # - rule
+      - backend-express # Web ต้องรอให้ Express API พร้อม
     ports:
       - "80:80"
 
 volumes:
   db_data:
+
+# Service สำหรับรันงานครั้งเดียว เช่น cron job หรือ training
+# สามารถรันได้ด้วย `docker-compose run category-trainer`
+#  category-trainer:
+#    build:
+#      context: ./backend/model/CategoryPredictorML
+#      dockerfile: dockerfile.trainer
+#    image: jirawatrmutto/moneylab-categorypredictorml:latest
+#    depends_on:
+#      - mysql
+#    volumes:
+#      - ./backend/model/CategoryPredictorML/models:/usr/src/app/models
+#    environment:
+#      - DB_HOST=mysql
+#      - DB_USER=root
+#      - DB_PASSWORD=Time3672
+#      - DB_NAME=moneylab

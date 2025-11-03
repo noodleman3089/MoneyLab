@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import './cronJobs';
 //Routes
-import  recommendationRoutes  from './routes/recommendation.routes';
+import recommendationRoutes  from './routes/recommendation.routes';
 import resetPasswordRoutes from './routes/reset_password';
 import profileRoutes from './routes/profile';
 import transactionRoutes from './routes/transactions';
@@ -15,11 +15,14 @@ import savingGoalsRoutes from './routes/savingGoals';
 import walletRouter from './routes/wallet';
 import savingTransactionRoutes from './routes/saving_transactions';
 import surveyRouter from './routes/survey';
-import notificationRoutes from './routes/notifications'; // 👈 เพิ่มบรรทัดนี้
+import notificationRoutes from './routes/notifications';
+import lookupsRouter from './routes/lookups';
+import routerCat from './routes/categories';
 //Controllers
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
 import AdminControllers from './controllers/admin';
+import usersController from './controllers/users';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
@@ -84,17 +87,20 @@ export function query(sql: string, params: any[] = []): Promise<any> {
 
 // --- [THE FIX] จัดการ Routes ทั้งหมดให้เป็นระเบียบ ---
 app.use('/api', [loginControllers, resetPasswordRoutes, AdminControllers, loginControllers]); // 👈 1. เอา registerControllers ออกจากกลุ่มนี้
-app.use('/api/auth', registerControllers); 
+app.use('/api/auth', registerControllers);
+app.use('/api/lookups', lookupsRouter); // 👈 เพิ่ม lookups route
 app.use('/api/profile', profileRoutes);
 app.use('/api/transactions-ocr', transactionsOCR); // แก้ Path ให้ถูกต้อง
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/survey', surveyRouter);
 app.use('/api/notifications', notificationRoutes); // เพิ่ม notificationRoutes
-app.use('/api/saving-goals', savingGoalsRoutes); 
+app.use('/api/saving-goals', savingGoalsRoutes);
 app.use('/api/saving-transactions', savingTransactionRoutes);
 app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตัวแปรที่ import มา
 app.use('/api/wallet', walletRouter);
+app.use('/api/users', usersController); 
+app.use('/api/categories', routerCat);
 
 // Start Web server
 app.listen(PORT, () => {

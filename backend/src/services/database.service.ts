@@ -179,13 +179,25 @@ export async function fetchAndCalculateGoalInfo(connection: mysql.Connection, go
   let calculatedDurationMonths = 0;
   const { target_amount, contribution_amount, frequency } = goalData;
 
-  if (contribution_amount > 0) {
-    const contributionsPerMonth = 
-        frequency === 'daily' ? contribution_amount * 30
-      : frequency === 'weekly' ? contribution_amount * 4
-      : contribution_amount; // monthly or one-time
+  let contributionsPerMonth = 0;
+  if (frequency === 'daily') {
+      contributionsPerMonth = contribution_amount * 30; // (ประมาณ 30 วัน/เดือน)
+  } else if (frequency === 'weekly') {
+      contributionsPerMonth = contribution_amount * 4; // (ประมาณ 4 สัปดาห์/เดือน)
+  } else if (frequency === 'monthly') {
+      contributionsPerMonth = contribution_amount;
+  }
+  // (ถ้า frequency === 'one-time', contributionsPerMonth จะยังเป็น 0)
 
-    calculatedDurationMonths = Math.ceil(target_amount / contributionsPerMonth);
+  if (contributionsPerMonth > 0) {
+      calculatedDurationMonths = Math.ceil(target_amount / contributionsPerMonth);
+  } else if (frequency === 'one-time' && contribution_amount > 0 && target_amount <= contribution_amount) {
+      // ถ้าเป็น 'one-time' และเงินออมครั้งเดียวพอ
+      calculatedDurationMonths = 1;
+  } else {
+      // ถ้าคำนวณไม่ได้ (เช่น one-time แต่เงินไม่พอ)
+      // ตีความเป็นเป้าหมายระยะยาวมาก
+      calculatedDurationMonths = 120; // (10 ปี)
   }
 
   return {

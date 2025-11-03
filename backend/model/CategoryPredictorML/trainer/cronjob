@@ -1,0 +1,2 @@
+# ทุกวันอาทิตย์ตี 2
+0 2 * * 0 /usr/src/app/retrain.sh >> /var/log/retrain.log 2>&1

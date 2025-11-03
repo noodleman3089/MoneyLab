@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken'; // 👈 1. Import jwt
 import { sendEmail } from '../sendEmail/sendEmail';
 import { query } from '../index';
 import moment from 'moment-timezone';
@@ -173,7 +174,30 @@ controllers_R.post('/verify-otp',
         new_value: { username: record.username, email: record.email }
       });
 
-      res.json({ status: true, message: 'Account verified and created successfully' });
+      // --- ✨ [THE FIX] สร้าง Token และส่งกลับไปให้ Frontend ---
+      const secretKey = process.env.SECRET_KEY;
+      if (!secretKey) {
+        throw new Error('JWT Secret Key is not defined in environment variables.');
+      }
+
+      // 2. สร้าง Token
+      const token = jwt.sign(
+        { user_id: newUserId, username: record.username, role: 'user' },
+        secretKey,
+        { expiresIn: '7d' } // กำหนดอายุ Token
+      );
+
+      // 3. ส่ง Response กลับไปพร้อม Token และข้อมูล User
+      res.json({
+        status: true,
+        message: 'Account verified and created successfully',
+        token: token,
+        user: {
+          user_id: newUserId,
+          username: record.username,
+          survey_completed: false // ผู้ใช้ใหม่ยังไม่เคยทำแบบสอบถามแน่นอน
+        }
+      });
     } catch (err: any) {
       await logActivity({
         user_id: null,

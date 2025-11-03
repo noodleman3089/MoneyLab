@@ -8,6 +8,81 @@ import moment from 'moment-timezone';
 
 const routes_T = express.Router();
 
+/* ------------------ GET: ดึงข้อมูลสรุปรายวัน ------------------ */
+routes_T.get(
+  '/daily',
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+    const userId = actor.user_id;
+
+    // 1. รับวันที่จาก query string (เช่น '2025-11-03')
+    const dateQuery = req.query.date as string;
+    if (!dateQuery || !/^\d{4}-\d{2}-\d{2}$/.test(dateQuery)) {
+      return res.status(400).json({ status: false, message: 'Invalid or missing date query parameter. Use YYYY-MM-DD format.' });
+    }
+
+    try {
+      // 2. ดึงงบประมาณรายวัน (Daily Goal)
+      const budgetResult = await query(
+        'SELECT target_spend FROM daily_budget WHERE user_id = ? AND budget_date = ? LIMIT 1',
+        [userId, dateQuery]
+      );
+      const dailyGoal = parseFloat(budgetResult[0]?.target_spend || '0');
+
+      // 3. คำนวณยอดใช้จ่ายรวมของวันนั้น (Current Spending)
+      const spendingResult = await query(
+        `SELECT COALESCE(SUM(amount), 0) AS total_spent 
+         FROM transactions 
+         WHERE user_id = ? AND type = 'expense' AND DATE(transaction_date) = ?`,
+        [userId, dateQuery]
+      );
+      const currentSpending = parseFloat(spendingResult[0]?.total_spent || '0');
+
+      // 4. ดึงรายการธุรกรรมทั้งหมดของวันนั้น
+      const transactionsResult = await query(
+        `SELECT 
+           t.transaction_id,
+           t.receiver_name,
+           t.sender_name,
+           c.category_name,
+           t.amount,
+           t.type,
+           t.transaction_date
+         FROM transactions t
+         LEFT JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ? AND DATE(t.transaction_date) = ?
+         ORDER BY t.transaction_date DESC`,
+        [userId, dateQuery]
+      );
+
+      // 👈 [THE FIX] แปลงค่า amount ในแต่ละ transaction ให้เป็นตัวเลข
+      const formattedTransactions = transactionsResult.map((tx: any) => ({
+        ...tx,
+        amount: parseFloat(tx.amount || '0'),
+      }));
+
+      // 5. ประกอบข้อมูลส่งกลับให้ Frontend
+      res.json({
+        status: true,
+        data: {
+          daily_goal: dailyGoal,
+          current_spending: currentSpending,
+          transactions: formattedTransactions, // 👈 ส่งข้อมูลที่แปลงค่าแล้วกลับไป
+        },
+      });
+
+    } catch (err: any) {
+      console.error('Error fetching daily summary:', err);
+      logActivity({ user_id: userId, actor_id: userId, actor_type: 'system', action: 'FETCH_DAILY_SUMMARY_EXCEPTION', description: `Error: ${err.message}`, req });
+      res.status(500).json({ status: false, message: 'Database error while fetching daily summary.' });
+    }
+  }
+);
+
 /* ------------------ POST: เพิ่มรายการใหม่ ------------------ */
 routes_T.post(
   '/',
@@ -99,9 +174,7 @@ routes_T.post(
       }
 
       // ✅ ถ้าไม่มี transaction_date → ใช้ NOW()
-      const dateToUse = transaction_date
-        ? moment(transaction_date).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss")
-        : moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
+      const dateToUse = transaction_date? moment(transaction_date).tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss"): moment().tz("Asia/Bangkok").format("YYYY-MM-DD HH:mm:ss");
 
       // ✅ บันทึกข้อมูลลง transactions
       const result: any = await query(
@@ -111,12 +184,12 @@ routes_T.post(
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, walletId, category_id, type, amount, fee,
-          req.body.sender_name || null,
-          req.body.receiver_name || null,
-          req.body.reference_id || null,
-          req.body.payment_source || null,
-          req.body.data_source || 'manual',
-          req.body.confidence || null,
+          sender_name || null,
+          receiver_name || null,
+          reference_id || null,
+          payment_source || null,
+          data_source,
+          confidence,
           dateToUse,
         ]
       );
@@ -238,6 +311,101 @@ routes_T.post(
       });
       console.error(err);
       res.status(500).json({ status: false, message: 'Database error' });
+    }
+  }
+);
+
+// ( ... imports และโค้ด GET /daily, POST / ... )
+
+/* -------------------------------------------------
+  ⭐️ [NEW] GET: /api/transactions/summary
+  ดึงข้อมูลสรุปทั้งหมดสำหรับหน้า SpendingSummary
+  -------------------------------------------------
+*/
+routes_T.get(
+  '/summary',
+  authenticateToken,
+  async (req: AuthRequest, res: Response) => {
+    const userId = req.user?.user_id;
+    if (!userId) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    try {
+      // 1. ดึงยอดรวม (สำหรับ Summary Cards)
+      const [totals]: any = await query(
+        `SELECT 
+          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'income') AS totalIncome,
+          (SELECT COALESCE(SUM(amount), 0) FROM transactions WHERE user_id = ? AND type = 'expense') AS totalExpense
+        `,
+        [userId, userId]
+      );
+      const balance = totals.totalIncome - totals.totalExpense;
+
+      // 2. ดึงสัดส่วนรายจ่าย (สำหรับ Pie Chart)
+      // (JOIN กับ category เพื่อเอา 'color_hex' ที่เราเพิ่มใน .sql)
+      const categorySummary: any = await query(
+        `SELECT c.category_name, c.color_hex, SUM(t.amount) AS amount
+         FROM transactions t
+         JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ? AND t.type = 'expense'
+         GROUP BY c.category_id, c.category_name, c.color_hex
+         ORDER BY amount DESC`,
+        [userId]
+      );
+
+      // 3. ดึงสรุปรายเดือน (สำหรับ Bar Chart)
+      const monthlyData: any = await query(
+        `SELECT 
+          DATE_FORMAT(transaction_date, '%Y-%m') AS month,
+          SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) AS income,
+          SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) AS expense
+         FROM transactions
+         WHERE user_id = ? AND transaction_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+         GROUP BY DATE_FORMAT(transaction_date, '%Y-%m')
+         ORDER BY month ASC`, // เรียงจากเก่าไปใหม่
+        [userId]
+      );
+
+      // 4. ดึงรายการล่าสุด (Recent Transactions)
+      const recentTransactions: any = await query(
+        `SELECT t.*, c.category_name
+         FROM transactions t
+         JOIN category c ON t.category_id = c.category_id
+         WHERE t.user_id = ?
+         ORDER BY t.transaction_date DESC
+         LIMIT 10`, // ดึง 10 รายการล่าสุด
+        [userId]
+      );
+
+      // 5. ส่งข้อมูลทั้งหมดกลับไป
+      res.json({
+        status: true,
+        data: {
+          totals: {
+            totalIncome: parseFloat(totals.totalIncome),
+            totalExpense: parseFloat(totals.totalExpense),
+            balance: balance,
+          },
+          categorySummary: categorySummary.map((item: any) => ({
+             ...item,
+             amount: parseFloat(item.amount)
+          })),
+          monthlyData: monthlyData.map((item: any) => ({
+             ...item,
+             income: parseFloat(item.income),
+             expense: parseFloat(item.expense)
+          })),
+          recentTransactions: recentTransactions.map((item: any) => ({
+             ...item,
+             amount: parseFloat(item.amount)
+          })),
+        },
+      });
+    } catch (err: any) {
+      console.error('Error fetching spending summary:', err);
+      logActivity({ user_id: userId, actor_id: userId, actor_type: 'system', action: 'FETCH_SUMMARY_EXCEPTION', description: `Error: ${err.message}`, req });
+      res.status(500).json({ status: false, message: 'Database error while fetching summary.' });
     }
   }
 );

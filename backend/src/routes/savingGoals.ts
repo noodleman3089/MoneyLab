@@ -1,8 +1,8 @@
-import express, { Request, Response } from 'express';
+import express, { Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { query } from '../index';
-import { authenticateToken } from '../middlewares/authMiddleware';
-
+import { authenticateToken, AuthRequest } from '../middlewares/authMiddleware';
+import { logActivity } from '../services/log.service';
 const routerG = express.Router();
 
 /* ================================================
@@ -18,20 +18,24 @@ routerG.post(
     body('frequency').isIn(['daily', 'weekly', 'monthly', 'one-time']),
     body('start_date').optional().isDate().withMessage('รูปแบบวันที่ไม่ถูกต้อง (YYYY-MM-DD)'),
   ],
-  async (req: Request, res: Response) => {
+  async (req: AuthRequest, res: Response) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ status: false, errors: errors.array() });
     }
 
-    const userId = (req as any).user.user_id;
+    const actor = req.user;
+    if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    const userId = actor.user_id;
     const {
       goal_name,
       target_amount,
       contribution_amount,
       frequency,
       start_date,
-      next_deduction_date,
     } = req.body;
 
     try {
@@ -42,6 +46,16 @@ routerG.post(
       );
 
       if (existing.length > 0) {
+        await logActivity({
+            user_id: userId,
+            actor_id: userId,
+            actor_type: actor.role,
+            action: 'CREATE_GOAL_FAIL_EXISTS',
+            table_name: 'saving_goals',
+            description: `User ${userId} failed to create goal: '${goal_name}' already exists.`,
+            req: req,
+            new_value: req.body
+        });
         return res.status(409).json({
           status: false,
           message: 'มีเป้าหมายนี้อยู่แล้วในระบบ',
@@ -65,8 +79,6 @@ routerG.post(
         walletId = walletRows[0].wallet_id;
       }
 
-      const dateToUse = start_date || new Date().toISOString().slice(0, 10);
-
       let nextDate: Date | null = null;
       const now = new Date();
       if (frequency === 'daily') nextDate = new Date(now.setDate(now.getDate() + 1));
@@ -75,10 +87,10 @@ routerG.post(
       else if (frequency === 'one-time') nextDate = null;
 
       // 🟢 เพิ่มเป้าหมายใหม่ (ตาม schema ใหม่)
-      await query(
+      const result: any = await query(
         `INSERT INTO saving_goals 
-        (user_id, wallet_id, goal_name, target_amount, contribution_amount, frequency, start_date, next_deduction_date)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, wallet_id, goal_name, target_amount, contribution_amount, frequency, start_date, next_deduction_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, // 👈 (8 ?)
         [
           userId,
           walletId,
@@ -88,12 +100,34 @@ routerG.post(
           frequency,
           start_date || new Date(),
           nextDate,
-          dateToUse,
         ]
       );
+      const newGoalId = result.insertId;
+
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: actor.role,
+          action: 'CREATE_SAVING_GOAL',
+          table_name: 'saving_goals',
+          record_id: newGoalId,
+          description: `User ${userId} created new goal: '${goal_name}' (ID: ${newGoalId}).`,
+          req: req,
+          new_value: req.body
+      });
 
       res.json({ status: true, message: 'สร้างเป้าหมายออมเงินสำเร็จ' });
-    } catch (err) {
+    } catch (err: any) {
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: 'system',
+          action: 'CREATE_GOAL_EXCEPTION',
+          table_name: 'saving_goals',
+          description: `Failed to create goal. Error: ${err.message}`,
+          req: req,
+          new_value: { error: err.stack }
+      });
       console.error(err);
       res.status(500).json({ status: false, message: 'Database error' });
     }
@@ -103,8 +137,13 @@ routerG.post(
 /* ================================================
    📄 READ: ดึงรายการเป้าหมายออมทั้งหมดของผู้ใช้
 ================================================ */
-routerG.get('/', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerG.get('/', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    const userId = actor.user_id;
 
   try {
     const goals = await query(
@@ -125,8 +164,13 @@ routerG.get('/', authenticateToken, async (req: Request, res: Response) => {
 /* ================================================
    🔍 READ ONE: ดึงรายละเอียดเป้าหมายออมเงิน
 ================================================ */
-routerG.get('/:id', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerG.get('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+  const userId = actor.user_id;
   const goalId = req.params.id;
 
   try {
@@ -160,33 +204,82 @@ routerG.put(
     body('frequency').optional().isIn(['daily', 'weekly', 'monthly', 'one-time']),
     body('next_deduction_date').optional().isISO8601().toDate(),
   ],
-  async (req: Request, res: Response) => {
-    const userId = (req as any).user.user_id;
+  async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ status: false, errors: errors.array() });
+    }
+    const actor = req.user;
+  if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+    const userId = actor.user_id;
     const goalId = req.params.id;
 
-    const fields = req.body;
-    const setClause = Object.keys(fields)
-      .map((key) => `${key} = ?`)
-      .join(', ');
-    const values = [...Object.values(fields), goalId, userId];
+    const allowedFields: { [key: string]: any } = {};
+    const whitelist = [
+      'goal_name', 
+      'target_amount', 
+      'contribution_amount', 
+      'frequency', 
+      'next_deduction_date',
+      'current_amount'
+    ];
 
-    if (Object.keys(fields).length === 0) {
+    for (const key of whitelist) {
+      if (req.body[key] !== undefined) {
+        allowedFields[key] = req.body[key];
+      }
+    }
+
+    if (Object.keys(allowedFields).length === 0) {
       return res.status(400).json({ status: false, message: 'ไม่มีข้อมูลที่จะแก้ไข' });
     }
 
+    const setClause = Object.keys(allowedFields)
+      .map((key) => `${key} = ?`)
+      .join(', ');
+    const values = [...Object.values(allowedFields), goalId, userId];
+
     try {
-      const result = await query(
+      const [oldGoal] = await query("SELECT * FROM saving_goals WHERE goal_id = ? AND user_id = ?", [goalId, userId]);
+
+      if (!oldGoal) {
+          return res.status(404).json({ status: false, message: 'ไม่พบเป้าหมายนี้' });
+      }
+      await query(
         `UPDATE saving_goals SET ${setClause}, updated_at = NOW() WHERE goal_id = ? AND user_id = ?`,
         values
       );
 
-      if ((result as any).affectedRows === 0) {
-        return res.status(404).json({ status: false, message: 'ไม่พบเป้าหมายนี้' });
-      }
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: actor.role,
+          action: 'UPDATE_SAVING_GOAL',
+          table_name: 'saving_goals',
+          record_id: goalId,
+          description: `User ${userId} updated goal: '${oldGoal.goal_name}' (ID: ${goalId}).`,
+          req: req,
+          old_value: oldGoal,
+          new_value: req.body
+      });
 
       res.json({ status: true, message: 'อัปเดตเป้าหมายเรียบร้อย' });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: 'system',
+          action: 'UPDATE_GOAL_EXCEPTION',
+          table_name: 'saving_goals',
+          record_id: goalId,
+          description: `Failed to update goal (ID: ${goalId}). Error: ${err.message}`,
+          req: req,
+          new_value: { error: err.stack }
+      });
       res.status(500).json({ status: false, message: 'Database error' });
     }
   }
@@ -195,8 +288,13 @@ routerG.put(
 /* ================================================
    🟡 PATCH: เปลี่ยนสถานะเป้าหมาย
 ================================================ */
-routerG.patch('/:id/status', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
+routerG.patch('/:id/status', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
+    }
+
+  const userId = actor.user_id;
   const goalId = req.params.id;
   const { status } = req.body;
 
@@ -206,13 +304,42 @@ routerG.patch('/:id/status', authenticateToken, async (req: Request, res: Respon
   }
 
   try {
+    const [oldGoal] = await query("SELECT status, goal_name FROM saving_goals WHERE goal_id = ? AND user_id = ?", [goalId, userId]);
+
+    if (!oldGoal) {
+        return res.status(404).json({ status: false, message: 'ไม่พบเป้าหมายนี้' });
+    }
     await query(
       `UPDATE saving_goals SET status = ?, updated_at = NOW() WHERE goal_id = ? AND user_id = ?`,
       [status, goalId, userId]
     );
 
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'UPDATE_GOAL_STATUS',
+        table_name: 'saving_goals',
+        record_id: goalId,
+        description: `User ${userId} changed goal '${oldGoal.goal_name}' status to '${status}'.`,
+        req: req,
+        old_value: oldGoal,
+        new_value: { status }
+    });
+
     res.json({ status: true, message: `อัปเดตสถานะเป็น ${status}` });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'system',
+        action: 'UPDATE_GOAL_STATUS_EXCEPTION',
+        table_name: 'saving_goals',
+        record_id: goalId,
+        description: `Failed to update goal status (ID: ${goalId}). Error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ status: false, message: 'Database error' });
   }
@@ -221,22 +348,60 @@ routerG.patch('/:id/status', authenticateToken, async (req: Request, res: Respon
 /* ================================================
    ❌ DELETE: ลบเป้าหมายออมเงิน
 ================================================ */
-routerG.delete('/:id', authenticateToken, async (req: Request, res: Response) => {
-  const userId = (req as any).user.user_id;
-  const goalId = req.params.id;
-
-  try {
-    const result = await query('DELETE FROM saving_goals WHERE goal_id = ? AND user_id = ?', [
-      goalId,
-      userId,
-    ]);
-
-    if ((result as any).affectedRows === 0) {
-      return res.status(404).json({ status: false, message: 'ไม่พบเป้าหมายนี้' });
+routerG.delete('/:id', authenticateToken, async (req: AuthRequest, res: Response) => {
+  const actor = req.user;
+  if (!actor) {
+      return res.status(401).json({ status: false, message: 'Invalid token data' });
     }
 
+  const userId = actor.user_id;
+  const goalId = req.params.id;
+
+  try {const [oldGoal] = await query("SELECT * FROM saving_goals WHERE goal_id = ? AND user_id = ?", [goalId, userId]);
+
+    if (!oldGoal) {
+      // 14. 🔽 Log (ไม่พบ)
+      await logActivity({
+          user_id: userId,
+          actor_id: userId,
+          actor_type: actor.role,
+          action: 'DELETE_GOAL_FAIL_NOT_FOUND',
+          table_name: 'saving_goals',
+          record_id: goalId,
+          description: `User ${userId} failed to delete goal (ID: ${goalId}): Not found.`,
+          req: req
+      });
+      return res.status(404).json({ status: false, message: 'ไม่พบเป้าหมายนี้' });
+    }
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: actor.role,
+        action: 'DELETE_SAVING_GOAL',
+        table_name: 'saving_goals',
+        record_id: goalId,
+        description: `User ${userId} deleted goal: '${oldGoal.goal_name}' (ID: ${goalId}).`,
+        req: req,
+        old_value: oldGoal // 👈 บันทึกข้อมูลที่ถูกลบ
+    });
+    await query('DELETE FROM saving_goals WHERE goal_id = ? AND user_id = ?', [
+        goalId,
+        userId,
+      ]);
+
     res.json({ status: true, message: 'ลบเป้าหมายเรียบร้อย' });
-  } catch (err) {
+  } catch (err: any) {
+    await logActivity({
+        user_id: userId,
+        actor_id: userId,
+        actor_type: 'system',
+        action: 'DELETE_GOAL_EXCEPTION',
+        table_name: 'saving_goals',
+        record_id: goalId,
+        description: `Failed to delete goal (ID: ${goalId}). Error: ${err.message}`,
+        req: req,
+        new_value: { error: err.stack }
+    });
     console.error(err);
     res.status(500).json({ status: false, message: 'Database error' });
   }
