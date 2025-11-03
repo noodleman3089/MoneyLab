@@ -5,6 +5,9 @@ import json
 import sys
 import mysql.connector
 from dotenv import load_dotenv
+from category_predictor.model import CategoryPredictorML
+
+
 
 # --- [THE FIX] ---
 # 1. หา Path ไปยังรากของโปรเจกต์ ML (CategoryPredictorML)
