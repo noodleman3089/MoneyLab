@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { query } from '../index';
 
 export type ActorRoleType = 'user' | 'admin' | 'system' | 'api';
 // 1. 🚨 แก้ไขเรื่องความปลอดภัย (ใช้ SECRET_KEY จาก .env และ Fail-Fast)
@@ -21,6 +22,7 @@ interface JwtPayload {
 // (วิธีนี้ดีกว่าการใช้ (req as any))
 export interface AuthRequest extends Request {
   user?: JwtPayload;
+  token?: string; // 👈 เพิ่ม token property
 }
 
 // ✅ (แก้ไขเล็กน้อย) ใช้ AuthRequest
@@ -49,7 +51,7 @@ export const verifyAdmin = (req: AuthRequest, res: Response, next: NextFunction)
 };
 
 // ✅ (แก้ไขใหม่) ใช้รูปแบบเดียวกับ verifyAdmin (try...catch)
-export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -58,10 +60,20 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
 
   const token = authHeader.split(' ')[1];
   try {
-    // 1. 🚨 ใช้ SECRET_KEY ที่ปลอดภัย
-    const decoded = jwt.verify(token, SECRET_KEY) as JwtPayload;
+    const payload = jwt.verify(token, SECRET_KEY!) as { user_id: number, username: string, role: ActorRoleType, jti: string };
+    
+    const [blocked] = await query(
+      "SELECT 1 FROM token_blocklist WHERE token_jti = ? LIMIT 1",
+      [payload.jti]
+    );
 
-    req.user = decoded; // ✅ TypeScript รู้จัก
+    if (blocked) {
+      // ถ้า Token นี้อยู่ใน Blocklist (ถูก Logout ไปแล้ว)
+      return res.status(401).json({ status: false, message: 'Token has been revoked' });
+    }
+
+    req.user = payload;
+    req.token = token; // 👈 ส่ง token ไปให้ logout controller ใช้
     next();
 
   } catch (err) {

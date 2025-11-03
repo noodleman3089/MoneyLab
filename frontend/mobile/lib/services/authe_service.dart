@@ -140,15 +140,65 @@ class AutheService {
 
   /// ล็อกเอาท์ผู้ใช้โดยการลบ Token และ User ออกจากเครื่อง
   Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token != null) {
+      try {
+        await http.post(
+          Uri.parse(ApiConfig.logoutUrl), // 👈 (ต้องเพิ่ม logoutUrl ใน ApiConfig)
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+        );
+      } catch (e) {
+        // ไม่ต้องหยุดการทำงาน แม้ว่า API จะล่ม
+        // เพราะการลบ Token ออกจากเครื่องสำคัญที่สุด
+        debugPrint('Failed to send logout request to server: $e');
+      }
+    }
+
+    // 4. (เหมือนเดิม) ลบ Token และ User ออกจากเครื่อง
     try {
-      final prefs = await SharedPreferences.getInstance();
       await prefs.remove('token');
-      // ⭐️ [FIXED] ลบข้อมูล user ออกด้วย
       await prefs.remove('user');
-      debugPrint('✅ Token and User removed. User logged out.');
+      debugPrint('✅ Token and User removed. User logged out locally.');
     } catch (e) {
       debugPrint('AutheService Logout Error: $e');
       throw Exception('เกิดข้อผิดพลาดระหว่างการล็อกเอาท์');
     }
+  }
+
+  Future<bool> validateToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      return false;
+    }
+
+    try {
+      // ยิง API ไปที่ /profile (ซึ่งต้องใช้ Token)
+      // ถ้าสำเร็จ (200) แปลว่า Token ยังใช้ได้
+      final response = await http.get(
+        Uri.parse(ApiConfig.profileUrl), 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('validateToken Error: $e');
+      return false;
+    }
+  }
+
+  /// [ใหม่] ตรวจสอบว่ามี Token ในเครื่องหรือไม่ (เร็ว แต่ไม่ชัวร์ว่าหมดอายุหรือยัง)
+  Future<bool> isLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    return token != null && token.isNotEmpty;
   }
 }
