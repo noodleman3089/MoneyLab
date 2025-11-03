@@ -23,6 +23,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ✅ ติดตั้งเสริม
 RUN pip install --no-cache-dir \
     flask==3.0.0 \
+    gunicorn==21.2.0 \
     prometheus-client==0.19.0 \
     werkzeug==3.0.1 \
     opencv-python-headless \
@@ -47,6 +48,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8000/health || exit 1
 
-# 8️⃣ รัน Flask app (ไม่ใช่ extract_receipt.py โดยตรง)
-# ใช้ gunicorn เพื่อรัน Flask app ที่ชื่อ 'app' ในไฟล์ 'extract_receipt.py'
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "extract_receipt:app"]
+# 8️⃣ รัน Flask app
+# ใช้ gunicorn เพื่อรัน Flask app ที่ชื่อ 'app' ในไฟล์ 'app.py'
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "app:app"]

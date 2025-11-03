@@ -9,7 +9,6 @@ import { ActorRoleType } from '../middlewares/authMiddleware';
 const controllers_L = express();
 const SECRET_KEY = process.env.SECRET_KEY;
 
-// Login
 controllers_L.post('/login',
 [
   body('username').isString().notEmpty().withMessage('Username or email is required'),
@@ -22,9 +21,9 @@ controllers_L.post('/login',
 
   const { username, password } = req.body;
   try {
-    // SQL ถูกต้อง
+    
     const [user] = await query(
-      "SELECT user_id, username, email, password_hash, role FROM users WHERE (username=? OR email=?)", // 👈 2. [OPTIMIZED] ดึงข้อมูลที่จำเป็น
+      "SELECT user_id, username, email, password_hash, role FROM users WHERE (username=? OR email=?)",
       [username, username]
     );
 
@@ -36,14 +35,14 @@ controllers_L.post('/login',
       await logActivity({
           user_id: user.user_id,
           actor_id: user.user_id,
-          actor_type: 'user', // (Role อะไรก็ได้เพราะยังไงก็ล็อกอินไม่ผ่าน)
+          actor_type: 'user',
           action: 'LOGIN_FAIL_SUSPENDED',
           table_name: 'users',
           record_id: user.user_id,
           description: `Login attempt by suspended user: ${user.username}.`,
           req: req
       });
-      // 403 Forbidden = เข้าใจคำขอ แต่ไม่อนุญาต
+      
       return res.status(403).send({ message: 'บัญชีนี้ถูกระงับการใช้งาน', status: false }); 
     }
 
@@ -56,14 +55,14 @@ controllers_L.post('/login',
 
     if (!isPasswordValid) {
       await logActivity({
-        user_id: user.user_id, // User ที่พยายาม Login
+        user_id: user.user_id,
         actor_id: user.user_id,
-        actor_type: user.role, // 'user' หรือ 'admin'
+        actor_type: user.role,
         action: 'LOGIN_FAIL',
         table_name: 'users',
         record_id: user.user_id,
         description: `Failed login attempt for ${user.username}.`,
-        req: req // 👈 ส่ง req object ไปด้วย
+        req: req
       });
       return res.status(401).send({ message: 'Invalid password', status: false });
     }
@@ -87,36 +86,33 @@ controllers_L.post('/login',
       { expiresIn: '1h' }
     );
 
-    // --- ✨ [THE FIX] ตรวจสอบว่าผู้ใช้เคยทำแบบสอบถามหรือยัง ---
     const [surveyCheck] = await query(
       'SELECT EXISTS(SELECT 1 FROM survey_answer WHERE user_id = ?) AS has_answered',
       [user.user_id]
     );
     const surveyCompleted = surveyCheck.has_answered === 1;
-    // ----------------------------------------------------
 
-    // 👈 5. [THE FIX] ส่งข้อมูลกลับในรูปแบบที่ Frontend ต้องการ
     res.json({
       status: true,
       message: 'เข้าสู่ระบบสำเร็จ',
       token: token,
-      user: { // <-- สร้าง object user ที่ซ้อนอยู่ข้างใน
+      user: { 
         user_id: user.user_id,
         username: user.username,
-        role: user.role, // <-- ส่ง role กลับไปด้วย
-        survey_completed: surveyCompleted // 👈 ส่งสถานะการทำแบบสอบถามกลับไปด้วย
+        role: user.role, 
+        survey_completed: surveyCompleted
       }
     });
 
   } catch (err: any) {
     await logActivity({
-        user_id: null, // หรือ user_id จาก req.body ถ้าพยายาม parse ได้
+        user_id: null, 
         actor_id: null,
         actor_type: 'system',
         action: 'LOGIN_EXCEPTION',
         description: `Login exception for attempt [${username || 'N/A'}]. Error: ${err.message}`,
         req: req,
-        new_value: { error: err.stack } // เก็บ stack trace
+        new_value: { error: err.stack }
       });
     next(err);
   }

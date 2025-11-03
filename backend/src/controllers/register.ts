@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken'; // 👈 1. Import jwt
+import jwt from 'jsonwebtoken';
 import { sendEmail } from '../sendEmail/sendEmail';
 import { query } from '../index';
 import moment from 'moment-timezone';
@@ -9,9 +9,6 @@ import { logActivity } from '../services/log.service';
 
 const controllers_R = express.Router();
 
-/* =============================
-   1️⃣ สมัครสมาชิก (ส่ง OTP)
-   ============================= */
 controllers_R.post('/register',
   [
     body('username').isString().notEmpty().withMessage('Username is required'),
@@ -33,7 +30,6 @@ controllers_R.post('/register',
 
     const { username, password, email, phone_number } = req.body;
     try {
-      // ✅ ตรวจสอบว่ามีผู้ใช้ซ้ำไหม
       const existingUser = await query(
         'SELECT * FROM users WHERE username=? OR email=? OR phone_number=?',
         [username, email, phone_number || null]
@@ -41,7 +37,7 @@ controllers_R.post('/register',
 
       if (existingUser.length > 0) {
         await logActivity({
-          user_id: existingUser[0].user_id, // 👈 User ที่ถูกพยายามสมัครทับ
+          user_id: existingUser[0].user_id,
           actor_id: null,
           actor_type: 'user',
           action: 'REGISTER_FAIL_USER_EXISTS',
@@ -53,21 +49,18 @@ controllers_R.post('/register',
         return res.status(409).send({ message: 'User already exists (username/email/phone_number)', status: false });
       }
 
-      // ✅ สร้างรหัส OTP
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = moment().tz("Asia/Bangkok").add(5, 'minutes').format("YYYY-MM-DD HH:mm:ss");
 
       const salt = await bcrypt.genSalt(10);
       const password_hash = await bcrypt.hash(password, salt);
 
-      // ✅ บันทึก OTP ลง DB (ยังไม่สร้าง user จริง)
       await query(
         `INSERT INTO otp_verification (email, otp_code, username, phone_number, password_hash, expires_at)
          VALUES (?, ?, ?, ?, ?, ?)`,
         [email, otpCode, username, phone_number || null, password_hash, expiresAt]
       );
 
-      // ✅ ส่งอีเมล OTP
       await sendEmail(
         email,
         'ยืนยันการสมัครสมาชิก - MoneyLab 🧾',
@@ -76,7 +69,7 @@ controllers_R.post('/register',
       );
 
       await logActivity({
-        user_id: null, // 👈 User ยังไม่ถูกสร้าง
+        user_id: null,
         actor_id: null,
         actor_type: 'user',
         action: 'OTP_REQUEST_SUCCESS',
@@ -107,9 +100,6 @@ controllers_R.post('/register',
   }
 );
 
-/* =============================
-   2️⃣ ยืนยัน OTP (สร้างบัญชีจริง)
-   ============================= */
 controllers_R.post('/verify-otp',
   [
     body('email').isEmail().withMessage('Invalid email'),
@@ -151,7 +141,6 @@ controllers_R.post('/verify-otp',
         return res.status(400).json({ status: false, message: 'OTP expired' });
       }
 
-      // ✅ บันทึก user จริงใน users table
       const result: any = await query(
         'INSERT INTO users (username, email, phone_number, password_hash) VALUES (?, ?, ?, ?)',
         [record.username, record.email, record.phone_number, record.password_hash]
@@ -159,12 +148,11 @@ controllers_R.post('/verify-otp',
 
       const newUserId = result.insertId;
 
-      // ✅ อัปเดตสถานะว่า OTP ถูกใช้แล้ว
       await query('UPDATE otp_verification SET verified = 1 WHERE id = ?', [record.id]);
 
       await logActivity({
-        user_id: newUserId,   // 👈 (ผู้ใช้ที่ถูกสร้าง)
-        actor_id: newUserId,  // 👈 (ผู้ใช้เป็นคนกระทำ)
+        user_id: newUserId,
+        actor_id: newUserId,
         actor_type: 'user',
         action: 'CREATE_USER_SUCCESS',
         table_name: 'users',
@@ -174,20 +162,17 @@ controllers_R.post('/verify-otp',
         new_value: { username: record.username, email: record.email }
       });
 
-      // --- ✨ [THE FIX] สร้าง Token และส่งกลับไปให้ Frontend ---
       const secretKey = process.env.SECRET_KEY;
       if (!secretKey) {
         throw new Error('JWT Secret Key is not defined in environment variables.');
       }
 
-      // 2. สร้าง Token
       const token = jwt.sign(
         { user_id: newUserId, username: record.username, role: 'user' },
         secretKey,
-        { expiresIn: '7d' } // กำหนดอายุ Token
+        { expiresIn: '7d' }
       );
 
-      // 3. ส่ง Response กลับไปพร้อม Token และข้อมูล User
       res.json({
         status: true,
         message: 'Account verified and created successfully',
@@ -195,7 +180,7 @@ controllers_R.post('/verify-otp',
         user: {
           user_id: newUserId,
           username: record.username,
-          survey_completed: false // ผู้ใช้ใหม่ยังไม่เคยทำแบบสอบถามแน่นอน
+          survey_completed: false
         }
       });
     } catch (err: any) {

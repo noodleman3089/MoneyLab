@@ -11,14 +11,18 @@ import 'pages/authentication/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
 import 'pages/Test/TestPage.dart';
+import 'package:mobile/services/wallet_service.dart';
 
 // import 'pages/Additional.dart';
 // import 'pages/UserProfilePage.dart' as userprofile;
 
 void main() {
   runApp(
-    ChangeNotifierProvider(
-      create: (context) => GoalService(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (context) => GoalService()),
+        ChangeNotifierProvider(create: (context) => WalletService()), // 👈 2. เพิ่ม
+      ],
       child: const MyApp(),
     ),
   );

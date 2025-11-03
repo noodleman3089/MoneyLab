@@ -5,11 +5,7 @@ import * as crypto from 'crypto';
 import { logActivity } from '../services/log.service';
 
 const routerA = express.Router();
-/**
- * USERS CRUD
- */
 
-// READ - ดึง users ทั้งหมด
 routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const limit = Number(req.query.limit) || 50;
@@ -43,12 +39,12 @@ routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
 
     if (actor) {
       await logActivity({
-        user_id: null, // 👈 [THE FIX] เปลี่ยนจาก 0 เป็น null
+        user_id: null,
         actor_id: actor.user_id,
         actor_type: 'admin',
         action: 'VIEW_ALL_USERS',
-        table_name: 'users', // ระบุตารางที่เกี่ยวข้อง
-        record_id: null, // ไม่ได้เจาะจง record ใด
+        table_name: 'users',
+        record_id: null,
         description: `Admin ${actor.username} fetched user list (Limit: ${safeLimit}, Offset: ${offset}, Role: ${role || 'all'}).`,
         req: req
       });
@@ -68,16 +64,16 @@ routerA.get('/users', verifyAdmin, async (req: AuthRequest, res: Response) => {
       filter: role ? { role } : null
     });
   } catch (err: any) {
-    const actor = req.user; // ดึง actor จาก req
+    const actor = req.user;
     
     await logActivity({
-      user_id: null, // 👈 [THE FIX] เปลี่ยนจาก 0 เป็น null
-      actor_id: actor?.user_id || 0, // 👈 ใช้ ?. ป้องกัน actor เป็น undefined
+      user_id: null,
+      actor_id: actor?.user_id || 0,
       actor_type: 'system',
       action: 'VIEW_ALL_USERS_EXCEPTION',
       description: `Failed to fetch users. Error: ${err.message}`,
       req: req,
-      new_value: { error: err.stack } // 👈 เก็บ stack trace ไว้เลย
+      new_value: { error: err.stack }
     });
 
     res.status(500).json({ status: false, message: 'Failed to fetch users', error: err.message });
@@ -147,25 +143,21 @@ routerA.get('/users/:id', verifyAdmin, async (req: AuthRequest, res: Response) =
   }
 });
 
-// DELETE - ลบ user
 routerA.delete('/users/:id', verifyAdmin, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const actor = req.user;
 
-    // 1. ตรวจสอบ Actor
     if (!actor) {
       return res.status(401).json({ status: false, message: 'Invalid admin token data' });
     }
 
-    // 2. ตรวจสอบว่าผู้ใช้มีอยู่จริง
     const existing = await query('SELECT user_id, username FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
     const targetUsername = existing[0].username;
 
-    // 3.  บันทึก Log 
     await logActivity({
       user_id: Number(id),
       actor_id: actor.user_id,
@@ -177,14 +169,12 @@ routerA.delete('/users/:id', verifyAdmin, async (req: AuthRequest, res: Response
       req: req
     });
 
-    // 4. ลบผู้ใช้
     const sql = `DELETE FROM users WHERE user_id = ?`;
     await query(sql, [id]);
 
     res.json({ status: true, message: 'User deleted successfully' });
 
   } catch (err: any) {
-    // 5. บันทึก Log เมื่อเกิด Error
     const actor = req.user;
     const { id } = req.params;
 
@@ -255,10 +245,6 @@ routerA.put('/users/:id/suspend', verifyAdmin, async (req: AuthRequest, res: Res
   }
 });
 
-/**
- * DASHBOARD APIs
- */
-
 // GET /api/dashboard/summary - ดึงข้อมูลตัวเลขสรุปทั้งหมด
 routerA.get('/dashboard/summary', verifyAdmin, async (req: AuthRequest, res: Response) => {
   const actor = req.user;
@@ -315,7 +301,6 @@ routerA.get('/dashboard/expense-chart', verifyAdmin, async (req: AuthRequest, re
     if (!actor) {
       return res.status(401).json({ status: false, message: 'Invalid admin token data' });
     }
-    // ดึงข้อมูลรายจ่ายรวมย้อนหลัง 6 เดือน
     const sql = `
       SELECT DATE_FORMAT(transaction_date, '%Y-%m') AS month, SUM(amount) AS total_expense
       FROM transactions
@@ -400,15 +385,14 @@ routerA.delete('/users/soft/:id', verifyAdmin, async (req: AuthRequest, res: Res
       return res.status(401).json({ status: false, message: 'Invalid admin token data' });
     }
 
-    // ตรวจสอบว่าผู้ใช้อยู่จริง
     const existing = await query('SELECT user_id FROM users WHERE user_id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ status: false, message: 'User not found' });
     }
 
     await logActivity({
-      user_id: Number(id) || 0,        // 👈 User ที่ "ถูกลบ"
-      actor_id: actor.user_id,  // 👈 Admin ที่ "เป็นคนลบ"
+      user_id: Number(id) || 0,
+      actor_id: actor.user_id,
       actor_type: 'admin',
       action: 'SOFT_DELETE_USER',
       table_name: 'users',
@@ -417,10 +401,8 @@ routerA.delete('/users/soft/:id', verifyAdmin, async (req: AuthRequest, res: Res
       req: req
     });
 
-    // สร้าง hash สำหรับแทนข้อมูลส่วนตัว
     const hash = crypto.createHash('sha256').update(`deleted-${id}-${Date.now()}`).digest('hex');
 
-    // อัปเดต user ให้ไม่สามารถใช้งานได้ และ hash ข้อมูลส่วนตัว
     await query(
       `UPDATE users 
        SET 
@@ -433,9 +415,6 @@ routerA.delete('/users/soft/:id', verifyAdmin, async (req: AuthRequest, res: Res
        WHERE user_id = ?`,
       [hash.substring(0, 12), id]
     );
-
-    // ถ้าคุณมีฟิลด์ is_active หรือ is_deleted:
-    // await query('UPDATE users SET is_active = 0, deleted_at = NOW() WHERE user_id = ?', [id]);
 
     res.json({
       status: true,

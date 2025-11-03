@@ -61,7 +61,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads'))); // ทำให้เข้าถึงไฟล์ใน uploads ได้
 
-const dbTimezone = process.env.DB_TIMEZONE || '+07:00';
+const dbTimezone = process.env.DB_TIMEZONE;
 // MySQL Connection
 const db = mysql.createPool({
   host: process.env.DB_HOST ?? '',

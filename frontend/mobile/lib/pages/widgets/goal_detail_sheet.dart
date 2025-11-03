@@ -1,8 +1,8 @@
-// goal_detail_sheet.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/saving_goal.dart';
+import 'package:provider/provider.dart';
+import '../../services/wallet_service.dart';
 
 class GoalDetailSheet extends StatelessWidget {
   final SavingGoal goal;
@@ -182,6 +182,8 @@ class GoalDetailSheet extends StatelessWidget {
   }
 
   void _showAddContributionDialog(BuildContext context) {
+    final walletService = context.read<WalletService>();
+    final currentBalance = walletService.wallet?.balance ?? 0.0;
     final amountController = TextEditingController();
     showDialog(
       context: context,
@@ -191,19 +193,35 @@ class GoalDetailSheet extends StatelessWidget {
           'ใส่เงินออมเข้าด้วยตัวเอง',
           style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
         ),
-        content: TextField(
-          controller: amountController,
-          keyboardType: TextInputType.number,
-          style: GoogleFonts.beVietnamPro(),
-          decoration: InputDecoration(
-            labelText: 'จำนวนเงิน (บาท)',
-            labelStyle: GoogleFonts.beVietnamPro(),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF4FB7B3), width: 2),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // (B) แสดงยอดเงินคงเหลือ
+            Text(
+              'เงินใน Wallet: ${currentBalance.toInt()} บาท',
+              style: GoogleFonts.beVietnamPro(
+                color: const Color(0xFF666666),
+                fontSize: 14,
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            // (C) เชื่อม Controller เข้ากับ TextField
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              style: GoogleFonts.beVietnamPro(),
+              decoration: InputDecoration(
+                labelText: 'จำนวนเงิน (บาท)',
+                labelStyle: GoogleFonts.beVietnamPro(),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFF4FB7B3), width: 2),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -216,18 +234,34 @@ class GoalDetailSheet extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () {
+              // (D) ตรวจสอบยอดเงินก่อน
               final amount = double.tryParse(amountController.text);
-              if (amount != null && amount > 0) {
-                onAddContribution(amount);
+              if (amount == null || amount <= 0) {
+                // (Optional: Show error)
+                return;
+              }
+              if (amount > currentBalance) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('เพิ่มเงินออม ${amount.toInt()} บาท สำเร็จ!',
+                    content: Text('ยอดเงินใน Wallet ไม่เพียงพอ!',
                         style: GoogleFonts.beVietnamPro()),
-                    backgroundColor: const Color(0xFF4FB7B3),
+                    backgroundColor: Colors.red,
                   ),
                 );
+                return;
               }
+
+              // (E) ถ้าทุกอย่าง OK
+              onAddContribution(amount);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('เพิ่มเงินออม ${amount.toInt()} บาท สำเร็จ!',
+                      style: GoogleFonts.beVietnamPro()),
+                  backgroundColor: const Color(0xFF4FB7B3),
+                ),
+              );
             },
             child: Text('เพิ่ม', style: GoogleFonts.beVietnamPro(color: Colors.white)),
           ),
