@@ -559,6 +559,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ElevatedButton(
             onPressed: () async {
               try {
+                // เรียกใช้ logout()
                 await _authService.logout();
 
                 if (!mounted) return;
