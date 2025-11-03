@@ -12,11 +12,14 @@ WORKDIR /app
 
 # Copy only production dependencies
 COPY package.json package-lock.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copy compiled code from builder
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/.env ./.env
+
+# --- [SECURITY FIX] ---
+# ❌ ห้ามคัดลอกไฟล์ .env เข้าไปใน Image โดยเด็ดขาด
+# ค่า Environment จะถูกส่งเข้ามาผ่าน docker-compose.yml ตอน runtime
 
 # Create wait-for script
 RUN echo '#!/bin/sh' > /wait-for.sh && \
@@ -30,6 +33,11 @@ RUN echo '#!/bin/sh' > /wait-for.sh && \
  echo 'echo "MySQL is up - starting application"' >> /wait-for.sh && \
  echo 'exec "$@"' >> /wait-for.sh && \
  chmod +x /wait-for.sh
+
+# --- [SECURITY BEST PRACTICE] ---
+# สร้าง user ที่ไม่มีสิทธิ์ root และเปลี่ยนไปใช้ user นั้น
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
 # Expose the API port
 EXPOSE 5000

@@ -15,6 +15,11 @@ RUN pip install gunicorn # ติดตั้ง Gunicorn สำหรับ Pro
 # เรา copy ทั้งหมดเพราะ run.py, src, และ model อยู่ใน context เดียวกัน
 COPY . .
 
+# --- [SECURITY BEST PRACTICE] ---
+# สร้าง user ที่ไม่มีสิทธิ์ root และเปลี่ยนไปใช้ user นั้น
+RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
+USER appuser
+
 # 5. expose port สำหรับ API
 EXPOSE 5001
 

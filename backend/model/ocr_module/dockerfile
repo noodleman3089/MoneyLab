@@ -35,6 +35,11 @@ RUN pip install --no-cache-dir \
 # 5️⃣ คัดลอกโค้ดทั้งหมดa
 COPY . .
 
+# --- [SECURITY BEST PRACTICE] ---
+# สร้าง user ที่ไม่มีสิทธิ์ root และเปลี่ยนไปใช้ user นั้น
+RUN addgroup --system appgroup && adduser --system appuser --ingroup appgroup
+USER appuser
+
 # 6️⃣ เปิด port
 EXPOSE 8000
 
