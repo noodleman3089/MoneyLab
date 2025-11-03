@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert'; // 👈 [NEW] 1. Import dart:convert
-import 'package:shared_preferences/shared_preferences.dart'; // 👈 [NEW] 2. Import SharedPreferences
+import 'dart:convert'; // 👈 1. Import dart:convert
+import 'package:shared_preferences/shared_preferences.dart'; // 👈 2. Import SharedPreferences
 
 import '../services/profile_service.dart';
-// ⭐️ [NEW] 3. Import หน้า Login/Service (สำหรับเด้งกลับ/Logout)
+// ⭐️ 3. Import หน้า Login/Service (สำหรับเด้งกลับ/Logout)
 import '../services/authe_service.dart';
 import 'authentication/login.dart';
 
@@ -18,7 +18,7 @@ class UserProfilePage extends StatefulWidget {
 class _UserProfilePageState extends State<UserProfilePage> {
   final ProfileService _profileService = ProfileService();
   final AutheService _authService =
-      AutheService(); // 👈 [NEW] 4. เพิ่ม AutheService
+      AutheService(); // 👈 4. เพิ่ม AutheService
 
   // 👈 5. [FIXED] แยก State ของข้อมูล 2 ส่วนออกจากกัน
   Map<String, dynamic> profileData = {
@@ -108,15 +108,22 @@ class _UserProfilePageState extends State<UserProfilePage> {
     // 👈 9. [FIXED] อ้างอิงจาก profileData
     double main =
         double.tryParse(profileData['main_income_amount']?.toString() ?? '0') ??
-        0;
+            0;
     double extra =
         double.tryParse(profileData['side_income_amount']?.toString() ?? '0') ??
-        0;
+            0;
     return main + extra;
   }
 
   @override
   Widget build(BuildContext context) {
+    // 👈 [THE FIX] 1. ดึงชื่อผู้ใช้และอักษรตัวแรกมาเตรียมไว้
+    final String username = userData['username']?.toString() ?? 'ผู้ใช้งาน';
+    final String userInitial =
+        username.isNotEmpty && username != 'กำลังโหลด...'
+            ? username[0].toUpperCase()
+            : '?';
+
     return Scaffold(
       backgroundColor: const Color(0xFF4DB6AC),
       appBar: AppBar(
@@ -144,195 +151,182 @@ class _UserProfilePageState extends State<UserProfilePage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : errorMessage != null
-          ? Center(
-              // ... (ส่วนแสดง Error) ...
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      'เกิดข้อผิดพลาด: $errorMessage',
-                      style: GoogleFonts.beVietnamPro(
-                        color: Colors.white,
-                        fontSize: 16,
-                      ),
-                      textAlign: TextAlign.center,
+              ? Center(
+                  // ... (ส่วนแสดง Error) ...
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'เกิดข้อผิดพลาด: $errorMessage',
+                          style: GoogleFonts.beVietnamPro(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: _loadAllUserData,
+                          child: const Text('ลองอีกครั้ง'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: _loadAllUserData,
-                      child: const Text('ลองอีกครั้ง'),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : SafeArea(
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    // Header with User Icon and Name
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 30),
-                      child: Column(
-                        children: [
-                          Stack(
-                            // ... (ส่วน Stack ไอคอนโปรไฟล์ เหมือนเดิม) ...
+                  ),
+                )
+              : SafeArea(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Header with User Icon and Name
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 30),
+                          child: Column(
                             children: [
-                              Container(
-                                width: 110,
-                                height: 110,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 65,
-                                  color: Color(0xFF26A69A),
-                                ),
-                              ),
-                              Positioned(
-                                right: 0,
-                                bottom: 0,
-                                child: Container(
-                                  width: 35,
-                                  height: 35,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF26A69A),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
+                              // 👈 [THE FIX] 2. แก้ไข Stack เพื่อแสดงอักษรตัวแรก
+                              Stack(
+                                children: [
+                                  Container(
+                                    width: 110,
+                                    height: 110,
+                                    decoration: BoxDecoration(
                                       color: Colors.white,
-                                      width: 3,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    // 👈 [THE FIX] 3. เปลี่ยนจาก Icon เป็น Text
+                                    child: Center(
+                                      child: Text(
+                                        userInitial, // ใช้ตัวแปรที่เตรียมไว้
+                                        style: GoogleFonts.beVietnamPro(
+                                          fontSize: 60,
+                                          fontWeight: FontWeight.bold,
+                                          color: const Color(0xFF26A69A),
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  child: const Icon(
-                                    Icons.camera_alt,
-                                    size: 18,
+                                  // 👈 [THE FIX] 4. ลบ Positioned (ไอคอนกล้อง)
+                                ],
+                              ),
+                              const SizedBox(height: 15),
+                              Text(
+                                // 👈 10. [FIXED] อ้างอิงจาก userData
+                                username, // 👈 [THE FIX] 5. ใช้ตัวแปรที่เตรียมไว้
+                                style: GoogleFonts.beVietnamPro(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Container(
+                                // ... (ส่วนป้าย 'สมาชิกทั่วไป' เหมือนเดิม) ...
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF26A69A),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Text(
+                                  'สมาชิกทั่วไป',
+                                  style: GoogleFonts.beVietnamPro(
+                                    fontSize: 14,
                                     color: Colors.white,
                                   ),
                                 ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 15),
-                          Text(
-                            // 👈 10. [FIXED] อ้างอิงจาก userData
-                            userData['username'] ?? 'ผู้ใช้งาน',
-                            style: GoogleFonts.beVietnamPro(
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Container(
-                            // ... (ส่วนป้าย 'สมาชิกทั่วไป' เหมือนเดิม) ...
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF26A69A),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              'สมาชิกทั่วไป',
-                              style: GoogleFonts.beVietnamPro(
-                                fontSize: 14,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                        ),
 
-                    // Personal Information Card
-                    _buildInfoCard(
-                      title: 'ข้อมูลส่วนตัว',
-                      icon: Icons.person_outline,
-                      children: [
-                        _buildInfoRow(
-                          Icons.email_outlined,
-                          'อีเมล',
-                          // 👈 [FIXED] อ้างอิงจาก userData
-                          userData['email'] ?? 'ไม่ระบุ',
+                        // Personal Information Card
+                        _buildInfoCard(
+                          title: 'ข้อมูลส่วนตัว',
+                          icon: Icons.person_outline,
+                          children: [
+                            _buildInfoRow(
+                              Icons.email_outlined,
+                              'อีเมล',
+                              // 👈 [FIXED] อ้างอิงจาก userData
+                              userData['email'] ?? 'ไม่ระบุ',
+                            ),
+                            _buildInfoRow(
+                              Icons.phone_outlined,
+                              'เบอร์โทรศัพท์',
+                              // 👈 [FIXED] อ้างอิงจาก userData
+                              userData['phone_number'] ?? 'ไม่ระบุ',
+                            ),
+                            _buildInfoRow(
+                              Icons.calendar_today_outlined,
+                              'สมัครใช้งานวันที่',
+                              // 👈 [FIXED] อ้างอิงจาก userData
+                              _formatDate(userData['created_at']),
+                            ),
+                          ],
                         ),
-                        _buildInfoRow(
-                          Icons.phone_outlined,
-                          'เบอร์โทรศัพท์',
-                          // 👈 [FIXED] อ้างอิงจาก userData
-                          userData['phone_number'] ?? 'ไม่ระบุ',
+
+                        const SizedBox(height: 20),
+
+                        // Monthly Income Card
+                        _buildInfoCard(
+                          title: 'รายรับต่อเดือน',
+                          icon: Icons.account_balance_wallet_outlined,
+                          children: [
+                            _buildIncomeRow(
+                              'รายรับหลัก',
+                              // 👈 [FIXED] อ้างอิงจาก profileData
+                              profileData['main_income_amount']?.toString() ??
+                                  '0.00',
+                              Colors.green.shade700,
+                            ),
+                            _buildIncomeRow(
+                              'รายรับเสริม',
+                              // 👈 [FIXED] อ้างอิงจาก profileData
+                              profileData['side_income_amount']?.toString() ??
+                                  '0.00',
+                              Colors.blue.shade700,
+                            ),
+                            const Divider(
+                              color: Colors.white70,
+                              thickness: 1,
+                              height: 30,
+                            ),
+                            _buildIncomeRow(
+                              'รวมต่อเดือน',
+                              totalMonthlyIncome.toStringAsFixed(2),
+                              Colors.orange.shade700,
+                              isBold: true,
+                            ),
+                          ],
                         ),
-                        _buildInfoRow(
-                          Icons.calendar_today_outlined,
-                          'สมัครใช้งานวันที่',
-                          // 👈 [FIXED] อ้างอิงจาก userData
-                          _formatDate(userData['created_at']),
-                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Action Buttons
+                        _buildActionButtons(),
+
+                        const SizedBox(height: 30),
                       ],
                     ),
-
-                    const SizedBox(height: 20),
-
-                    // Monthly Income Card
-                    _buildInfoCard(
-                      title: 'รายรับต่อเดือน',
-                      icon: Icons.account_balance_wallet_outlined,
-                      children: [
-                        _buildIncomeRow(
-                          'รายรับหลัก',
-                          // 👈 [FIXED] อ้างอิงจาก profileData
-                          profileData['main_income_amount']?.toString() ??
-                              '0.00',
-                          Colors.green.shade700,
-                        ),
-                        _buildIncomeRow(
-                          'รายรับเสริม',
-                          // 👈 [FIXED] อ้างอิงจาก profileData
-                          profileData['side_income_amount']?.toString() ??
-                              '0.00',
-                          Colors.blue.shade700,
-                        ),
-                        const Divider(
-                          color: Colors.white70,
-                          thickness: 1,
-                          height: 30,
-                        ),
-                        _buildIncomeRow(
-                          'รวมต่อเดือน',
-                          totalMonthlyIncome.toStringAsFixed(2),
-                          Colors.orange.shade700,
-                          isBold: true,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Action Buttons
-                    _buildActionButtons(),
-
-                    const SizedBox(height: 30),
-                  ],
+                  ),
                 ),
-              ),
-            ),
     );
   }
 
   // ... (โค้ดส่วนที่เหลือ _formatDate, _buildInfoCard, _buildInfoRow,
-  // _buildIncomeRow, _buildActionButton เหมือนเดิมทั้งหมด) ...
+  // _buildIncomeRow, _buildActionButton, _buildActionButtons, _showLogoutDialog
+  // เหมือนเดิมทั้งหมด) ...
 
   String _formatDate(String? dateString) {
     if (dateString == null) return 'ไม่ระบุ';

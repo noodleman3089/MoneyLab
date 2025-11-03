@@ -6,8 +6,8 @@ class ApiConfig {
   // 1. กำหนด Base URL หลักสำหรับ Backend (Node.js)
   // 🔴 ใช้ 'localhost' สำหรับ iOS Simulator หรือ Android Emulator
   // 🟢 ใช้ IP Address ของคอมพิวเตอร์สำหรับอุปกรณ์จริง (Physical Device)
-  // static const String _baseUrl = 'http://localhost:5000';
-  static const String _baseUrl = 'http://10.13.2.69:5000'; 
+   static const String _baseUrl = 'http://localhost:5000';
+  //static const String _baseUrl = 'http://10.13.2.69:5000'; 
   // 2. สร้าง Endpoint หลักๆ
   // --- [THE FIX] --- เปลี่ยนจาก const เป็น final เพราะมีการใช้ String Interpolation
   static const String apiUrl = '$_baseUrl/api';

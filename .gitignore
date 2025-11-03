@@ -20,3 +20,6 @@ nul
 nul
 *.jpeg
 *.txt
+
+# Environment variables my self
+/backend/.env

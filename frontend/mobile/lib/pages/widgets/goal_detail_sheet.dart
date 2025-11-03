@@ -182,90 +182,92 @@ class GoalDetailSheet extends StatelessWidget {
   }
 
   void _showAddContributionDialog(BuildContext context) {
-    final walletService = context.read<WalletService>();
-    final currentBalance = walletService.wallet?.balance ?? 0.0;
     final amountController = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'ใส่เงินออมเข้าด้วยตัวเอง',
-          style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // (B) แสดงยอดเงินคงเหลือ
-            Text(
-              'เงินใน Wallet: ${currentBalance.toInt()} บาท',
-              style: GoogleFonts.beVietnamPro(
-                color: const Color(0xFF666666),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            // (C) เชื่อม Controller เข้ากับ TextField
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              style: GoogleFonts.beVietnamPro(),
-              decoration: InputDecoration(
-                labelText: 'จำนวนเงิน (บาท)',
-                labelStyle: GoogleFonts.beVietnamPro(),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF4FB7B3), width: 2),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('ยกเลิก', style: GoogleFonts.beVietnamPro(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4FB7B3),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              // (D) ตรวจสอบยอดเงินก่อน
-              final amount = double.tryParse(amountController.text);
-              if (amount == null || amount <= 0) {
-                // (Optional: Show error)
-                return;
-              }
-              if (amount > currentBalance) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('ยอดเงินใน Wallet ไม่เพียงพอ!',
-                        style: GoogleFonts.beVietnamPro()),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                return;
-              }
+      // 1. ใช้ Consumer<WalletService> เพื่อ "เฝ้าดู" การเปลี่ยนแปลง
+      builder: (context) => Consumer<WalletService>(
+        builder: (context, walletService, child) {
+          // 2. ดึงค่า balance ล่าสุดจาก walletService ที่ Consumer ส่งมาให้
+          final currentBalance = walletService.wallet?.balance ?? 0.0;
 
-              // (E) ถ้าทุกอย่าง OK
-              onAddContribution(amount);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('เพิ่มเงินออม ${amount.toInt()} บาท สำเร็จ!',
-                      style: GoogleFonts.beVietnamPro()),
-                  backgroundColor: const Color(0xFF4FB7B3),
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Text(
+              'ใส่เงินออมเข้าด้วยตัวเอง',
+              style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 3. ส่วนนี้จะ rebuild อัตโนมัติเมื่อค่า balance เปลี่ยน
+                Text(
+                  'เงินใน Wallet: ${currentBalance.toInt()} บาท',
+                  style: GoogleFonts.beVietnamPro(
+                    color: const Color(0xFF666666),
+                    fontSize: 14,
+                  ),
                 ),
-              );
-            },
-            child: Text('เพิ่ม', style: GoogleFonts.beVietnamPro(color: Colors.white)),
-          ),
-        ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: amountController,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.beVietnamPro(),
+                  decoration: InputDecoration(
+                    labelText: 'จำนวนเงิน (บาท)',
+                    labelStyle: GoogleFonts.beVietnamPro(),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF4FB7B3), width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('ยกเลิก', style: GoogleFonts.beVietnamPro(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF4FB7B3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () {
+                  final amount = double.tryParse(amountController.text);
+                  if (amount == null || amount <= 0) {
+                    return;
+                  }
+                  if (amount > currentBalance) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('ยอดเงินใน Wallet ไม่เพียงพอ!',
+                            style: GoogleFonts.beVietnamPro()),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    return;
+                  }
+
+                  onAddContribution(amount);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('เพิ่มเงินออม ${amount.toInt()} บาท สำเร็จ!',
+                          style: GoogleFonts.beVietnamPro()),
+                      backgroundColor: const Color(0xFF4FB7B3),
+                    ),
+                  );
+                },
+                child: Text('เพิ่ม', style: GoogleFonts.beVietnamPro(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
