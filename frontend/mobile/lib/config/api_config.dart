@@ -7,10 +7,9 @@ class ApiConfig {
   // 🔴 ใช้ 'localhost' สำหรับ iOS Simulator หรือ Android Emulator
   // 🟢 ใช้ IP Address ของคอมพิวเตอร์สำหรับอุปกรณ์จริง (Physical Device)
   // static const String _baseUrl = 'http://localhost:5000';
-  static const String _baseUrl = 'http://10.192.86.76:5000'; // 👈 ❗️❗️ แก้ไขตรงนี้ ❗️❗️
-
-
+  static const String _baseUrl = 'http://10.13.2.69:5000'; 
   // 2. สร้าง Endpoint หลักๆ
+  // --- [THE FIX] --- เปลี่ยนจาก const เป็น final เพราะมีการใช้ String Interpolation
   static const String apiUrl = '$_baseUrl/api';
 
   // --- Authentication Endpoints ---
@@ -47,8 +46,6 @@ class ApiConfig {
 
   // --- Goal Endpoints ---
   static String get savingGoalsUrl => '$apiUrl/saving-goals';
-
-  static String get categoriesUrl => '$apiUrl/categories';
 
   // TODO: เพิ่ม Endpoints อื่นๆ ที่นี่ เช่น transactions, goals, etc.
 }

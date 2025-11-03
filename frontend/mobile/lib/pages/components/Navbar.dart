@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../UserProfilePage.dart';
-import '../GoalPageState.dart';
+import '../goal_page.dart';
 import '../Additional.dart';
 import '../DailyManagement.dart';
 import '../SpendingSummary.dart';
