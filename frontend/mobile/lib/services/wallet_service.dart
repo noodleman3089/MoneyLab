@@ -20,7 +20,6 @@ class WalletService extends ChangeNotifier {
   // (สันนิษฐานว่าคุณใช้ http.Client เหมือน GoalService)
   final http.Client client;
   WalletService({http.Client? client}) : client = client ?? http.Client() {
-    fetchWallet(); // 👈 4. เรียกตอนเริ่มต้น
   }
 
   Future<Map<String, String>> _getHeaders() async {

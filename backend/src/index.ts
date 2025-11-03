@@ -18,6 +18,7 @@ import surveyRouter from './routes/survey';
 import notificationRoutes from './routes/notifications';
 import lookupsRouter from './routes/lookups';
 import routerCat from './routes/categories';
+import authRoutes from './routes/auth.routes';
 //Controllers
 import registerControllers from './controllers/register';
 import loginControllers from './controllers/login';
@@ -101,6 +102,7 @@ app.use('/api/daily-budget', DailyBudgetrouter); // ใช้ชื่อตั�
 app.use('/api/wallet', walletRouter);
 app.use('/api/users', usersController); 
 app.use('/api/categories', routerCat);
+app.use('/api/auth', authRoutes);
 
 // Start Web server
 app.listen(PORT, () => {

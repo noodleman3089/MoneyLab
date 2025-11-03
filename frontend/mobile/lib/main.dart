@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mobile/pages/Questionnaire.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/goal_service.dart';
 import 'package:mobile/pages/goal_page.dart';
@@ -12,16 +13,23 @@ import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
 import 'pages/Test/TestPage.dart';
 import 'package:mobile/services/wallet_service.dart';
+import 'services/authe_service.dart';
+import 'auth_wrapper.dart';
 
 // import 'pages/Additional.dart';
 // import 'pages/UserProfilePage.dart' as userprofile;
 
-void main() {
+void main() async{
+
+  WidgetsFlutterBinding.ensureInitialized();
+  await SharedPreferences.getInstance();
+  
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => GoalService()),
-        ChangeNotifierProvider(create: (context) => WalletService()), // 👈 2. เพิ่ม
+        ChangeNotifierProvider(create: (context) => WalletService()),
+        Provider(create: (context) => AutheService()),
       ],
       child: const MyApp(),
     ),
@@ -42,7 +50,7 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const MyHomePage(title: 'MoneyLab'),
+        '/': (context) => const AuthWrapper(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgetpassword': (context) => const ForgotPasswordScreen(),

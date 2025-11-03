@@ -43,11 +43,24 @@ CREATE TABLE IF NOT EXISTS otp_verification (
 -- category (lookup)
 -- ========================
 CREATE TABLE IF NOT EXISTS category (
-  category_id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
-  category_name VARCHAR(100) NOT NULL,
-  category_type ENUM('income','expense','transfer') NOT NULL,
-  UNIQUE KEY uq_category_name_type (category_name, category_type)
+    category_id SMALLINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT UNSIGNED NULL, -- (เผื่อเป็นหมวดหมู่ส่วนตัว)
+    category_name VARCHAR(100) NOT NULL,
+    category_type ENUM('income', 'expense') NOT NULL,
+    
+    -- ⭐️ นี่คือฟิลด์ที่โค้ด Node.js ของคุณต้องการ ⭐️
+    color_hex VARCHAR(7) NOT NULL DEFAULT '#CCCCCC', 
+    
+    -- (ฟิลด์อื่นๆ เช่น ไอคอน)
+    icon_name VARCHAR(50) NULL,
+    
+    UNIQUE(user_id, category_name, type), -- ป้องกันชื่อหมวดหมู่ซ้ำกันในประเภทเดียวกัน
+    CONSTRAINT fk_cat_user FOREIGN KEY (user_id)
+      REFERENCES users(user_id)
+      ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE INDEX ix_cat_user_type ON category(user_id, type);
 
 -- ========================
 -- wallet

@@ -5,6 +5,7 @@ import jwt from 'jsonwebtoken';
 import { query } from '../index';
 import { logActivity } from '../services/log.service';
 import { ActorRoleType } from '../middlewares/authMiddleware';
+import { v4 as uuidv4 } from 'uuid';
 
 const controllers_L = express();
 const SECRET_KEY = process.env.SECRET_KEY;
@@ -80,10 +81,14 @@ controllers_L.post('/login',
       req: req
     });
 
+    const jti = uuidv4();
     const token = jwt.sign(
       { user_id: user.user_id, username: user.username, role: tokenRole },
       SECRET_KEY!,
-      { expiresIn: '1h' }
+      { 
+        expiresIn: '30d',
+        jwtid: jti // 3. เพิ่ม JTI (JWT ID) เข้าไปใน Token
+      }
     );
 
     const [surveyCheck] = await query(

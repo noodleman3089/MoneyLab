@@ -16,6 +16,7 @@ class ApiConfig {
   static String get loginUrl => '$apiUrl/login';
   static String get registerUrl => '$apiUrl/auth/register';
   static String get verifyOtpUrl => '$apiUrl/auth/verify-otp';
+  static String get logoutUrl => '$apiUrl/auth/logout';
   static String get forgotPasswordUrl => '$apiUrl/forgotpassword';
   static String get resetPasswordUrl => '$apiUrl/resetpassword';
 
@@ -50,6 +51,8 @@ class ApiConfig {
   static String get savingGoalsUrl => '$apiUrl/saving-goals';
 
   static String get savingTransactionsUrl => '$apiUrl/saving-transactions';
+
+  static String get generateRecommendationsUrl => '$apiUrl/recommendations/generate';
 
   // TODO: เพิ่ม Endpoints อื่นๆ ที่นี่ เช่น transactions, goals, etc.
 }

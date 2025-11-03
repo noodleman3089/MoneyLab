@@ -116,7 +116,14 @@ routerG.post(
           new_value: req.body
       });
 
-      res.json({ status: true, message: 'สร้างเป้าหมายออมเงินสำเร็จ' });
+      const [newGoalRows] = await query(
+      'SELECT * FROM saving_goals WHERE goal_id = ?', 
+      [newGoalId]
+    );
+
+      res.json({ status: true, message: 'สร้างเป้าหมายออมเงินสำเร็จ',
+        goal: newGoalRows[0]
+       });
     } catch (err: any) {
       await logActivity({
           user_id: userId,

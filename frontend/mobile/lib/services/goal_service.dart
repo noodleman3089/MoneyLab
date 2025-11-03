@@ -86,27 +86,78 @@ class GoalService extends ChangeNotifier {
   // 5. แก้ไข ADDGOAL ให้เป็น async และเรียก http.post
   Future<void> addGoal(SavingGoal newGoal) async {
     try {
+      final headers = await _getHeaders();
       final frequency = _unitToFrequency(newGoal.unit);
       final body = jsonEncode(newGoal.toCreateJson(frequency));
 
-      final headers = await _getHeaders();
       final response = await client.post(
         Uri.parse(ApiConfig.savingGoalsUrl),
         headers: headers,
-        //headers: {'Content-Type': 'application/json'},
-        body: body, // ใช้ toJson() ที่เราสร้างไว้
+        body: body,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) { // 👈 Backend ตอบ 200
-        // Backend ไม่ได้ส่ง Goal ที่สร้างกลับมา (ตามโค้ด .ts)
-        // เราจึงต้อง fetch ใหม่ทั้งหมดเพื่อให้ได้ ID ที่ถูกต้อง
-        await fetchGoals(); // 👈 ง่ายที่สุดคือโหลดใหม่
-        // (หรือจะอัปเดต newGoal.id แล้ว add เข้า _goals ตรงๆ ก็ได้ถ้า Backend ตอบกลับมา)
+      final responseBody = jsonDecode(response.body);
+
+      if ((response.statusCode == 200 || response.statusCode == 201) && responseBody['status'] == true) {
+        
+        // 2. รับ Goal ที่เพิ่งสร้างกลับมา
+        final createdGoalData = responseBody['goal'];
+        if (createdGoalData != null) {
+          final createdGoal = SavingGoal.fromJson(createdGoalData);
+
+          // 3. ตรวจสอบว่าถ้าเป็นแผน "ลงทุน" ให้สร้างคำแนะนำ
+          if (createdGoal.plan == 'ลงทุน') {
+            // เราส่ง goalId ไป และ Service ฝั่ง Backend
+            // จะดึง Survey, Income, Debt ของ User มาคำนวณเอง
+            await _generateRecommendation(createdGoal.id!);
+          }
+        }
+        
+        // 4. โหลด Goal ทั้งหมดใหม่ (รวมอันที่เพิ่งสร้าง)
+        await fetchGoals(); 
+
       } else {
-        // TODO: จัดการ Error (เช่น แสดง SnackBar)
+        throw Exception(responseBody['message'] ?? 'Failed to create goal');
       }
     } catch (e) {
       // TODO: จัดการ Error
+      print('Error in addGoal: $e');
+    }
+  }
+
+  Future<void> _generateRecommendation(String goalId) async {
+    try {
+      final headers = await _getHeaders();
+
+      // 🛑 TODO: คุณต้องดึงข้อมูลนี้มาจาก Service อื่น หรือ SharedPreferences
+      // นี่เป็นข้อมูลที่ Controller (Backend) ต้องการ
+      // ผมจะใส่ค่าตัวอย่างไว้ก่อน
+      final financialData = {
+        "goalId": int.parse(goalId),
+        "main_income_amount": 50000, // 👈 (TODO: ใส่ค่าจริง)
+        "side_income_amount": 0,     // 👈 (TODO: ใส่ค่าจริง)
+        "debts": [
+          // { "debt_type": "หนี้บัตร", "debt_monthly_payment": 2000, "debt_interest_rate": 18 } 
+          // 👈 (TODO: ใส่ค่าจริง)
+        ]
+      };
+
+      final response = await client.post(
+        Uri.parse(ApiConfig.generateRecommendationsUrl),
+        headers: headers,
+        body: jsonEncode(financialData),
+      );
+
+      if (response.statusCode != 200) {
+        // ไม่ต้องโยน Error ร้ายแรง เพราะ Goal สร้างสำเร็จแล้ว
+        // แค่ Log ไว้ว่าการสร้างคำแนะนำล้มเหลว
+        print('Failed to generate recommendations: ${response.body}');
+      } else {
+        print('Successfully generated recommendations for goal $goalId');
+      }
+
+    } catch (e) {
+      print('Error in _generateRecommendation: $e');
     }
   }
 
