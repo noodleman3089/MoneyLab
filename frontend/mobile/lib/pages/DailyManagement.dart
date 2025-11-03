@@ -67,19 +67,18 @@ class _DailyManagementPageState extends State<DailyManagementPage>
     });
 
     try {
-      // ใช้ Future.wait เพื่อดึงข้อมูล 2 ส่วนพร้อมกัน
+      // ใช้ Future.wait เพื่อดึงข้อมูลสรุป และเรียก fetchWallet แยกกัน
       final results = await Future.wait([
-        _transactionService.fetchDailySummary(DateTime.now()),
-        _walletService.fetchWalletBalance(),
+        _transactionService.fetchDailySummary(DateTime.now()), // ดึงข้อมูลสรุปรายวัน
       ]);
 
-      final summary = results[0] as models.DailySummary;
-      final balance = results[1] as double;
+      final summary = results[0] as models.DailySummary; // ผลลัพธ์ตัวแรกคือ summary
+      await _walletService.fetchWallet(); // เรียกให้ service ไปดึงข้อมูล wallet
 
       if (mounted) {
         setState(() {
           _dailySummary = summary;
-          _walletBalance = balance; // 👈 เก็บค่า balance ที่ได้มา
+          _walletBalance = _walletService.wallet?.balance; // 👈 ดึงค่า balance จาก service โดยตรง
           _isLoading = false;
         });
       }
