@@ -163,20 +163,56 @@ class GoalService extends ChangeNotifier {
     }
   }
 
-  // 8. แก้ไข ADDCONTRIBUTION ให้เรียก http.post (หรือ http.patch)
-  // นี่เป็นตัวอย่าง (API อาจแตกต่างกัน)
   Future<void> addContribution(String goalId, double amount) async {
-    final index = _goals.indexWhere((g) => g.id == goalId);
-    if (index == -1) return;
+    final headers = await _getHeaders();
 
-    final goal = _goals[index];
-    goal.saved += amount;
+    try {
+      // Backend (saving_transactions.ts) คาดหวัง 'goal_id' เป็น int
+      final goalIdInt = int.tryParse(goalId);
+      if (goalIdInt == null) {
+        throw Exception('Invalid Goal ID format');
+      }
 
-    // เราจะเรียก updateGoal ปกติ ให้มันส่งข้อมูลทั้งก้อนไปอัปเดต
-    // (เพราะ Backend ไม่มี endpoint สำหรับ contribute โดยเฉพาะ)
-    // *** หมายเหตุ: Backend ของคุณไม่ได้อัปเดต current_amount ใน PUT นะครับ ***
-    // *** คุณต้องไปแก้ Backend ให้รับ 'current_amount' ใน Whitelist ของ PUT ด้วย ***
-    await updateGoal(goal); 
+      final response = await client.post(
+        Uri.parse(ApiConfig.savingTransactionsUrl), // 👈 4. ใช้ URL ใหม่
+        headers: headers,
+        body: jsonEncode({
+          'goal_id': goalIdInt,
+          'amount': amount,
+        }),
+      );
+
+      final body = jsonDecode(response.body);
+
+      // 5. ตรวจสอบ response จาก Backend
+      if (response.statusCode == 200 && body['status'] == true) {
+        // สำเร็จ! Backend จะส่งข้อมูลที่อัปเดตแล้วกลับมา
+        final data = body['data'];
+        final index = _goals.indexWhere((g) => g.id == goalId);
+        
+        if (index != -1) {
+          final goal = _goals[index];
+          
+          // อัปเดต Goal ในแอปด้วยข้อมูลใหม่จากเซิร์ฟเวอร์
+          goal.saved = (data['new_amount'] as num).toDouble();
+          goal.progress = (double.tryParse(data['progress_percent'].toString()) ?? 0.0);
+          goal.status = data['status'];
+          
+          // คำนวณค่าที่ UI ใช้อีกครั้ง
+          goal.duration = calculateDuration(goal.target, goal.saved, goal.perPeriod);
+          goal.perDay = (goal.perPeriod / unitDays(goal.unit)).ceilToDouble();
+
+          _goals[index] = goal;
+          notifyListeners(); // แจ้งเตือน UI ให้อัปเดต
+        }
+      } else {
+        // 6. ถ้าล้มเหลว (เช่น เงินไม่พอ) ให้โยน Error ที่ Backend ส่งมา
+        throw Exception(body['message'] ?? 'Failed to add contribution');
+      }
+    } catch (e) {
+      // โยน Error ต่อไปให้ UI (เช่น SnackBar) แสดง
+      throw Exception(e.toString());
+    }
   }
 
   String unitLabel(String unit) {

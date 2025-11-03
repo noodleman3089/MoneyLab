@@ -36,7 +36,7 @@ class ApiConfig {
   static String get getTodayBudgetUrl => '$apiUrl/daily-budget/today';
   
   // Categories
-  static const String categoriesUrl = '$apiUrl/categories';
+  static String get categoriesUrl = '$apiUrl/categories';
 
   // OCR Endpoint
   static String get ocrUrl => '$apiUrl/transactions-ocr';
@@ -48,7 +48,7 @@ class ApiConfig {
   // --- Goal Endpoints ---
   static String get savingGoalsUrl => '$apiUrl/saving-goals';
 
-  static String get categoriesUrl => '$apiUrl/categories';
+  static String get savingTransactionsUrl => '$apiUrl/saving-transactions';
 
   // TODO: เพิ่ม Endpoints อื่นๆ ที่นี่ เช่น transactions, goals, etc.
 }
