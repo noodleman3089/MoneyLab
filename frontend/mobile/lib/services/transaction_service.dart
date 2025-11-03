@@ -22,7 +22,7 @@ class TransactionService {
     // หมายเหตุ: Endpoint นี้เป็นการคาดการณ์จากโครงสร้าง Backend ที่ควรจะเป็น
     // คุณอาจจะต้องสร้าง Endpoint นี้ใน Backend เพิ่มเติม
     final response = await http.get(
-      Uri.parse('${ApiConfig.apiUrl}/transactions/daily?date=$formattedDate'), // 👈 2. ใช้ ApiConfig
+      Uri.parse('${ApiConfig.apiUrl}/transactions/daily?date=$formattedDate'),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
@@ -80,38 +80,6 @@ class TransactionService {
     }
   }
 
-  /// ตั้งงบประมาณรายวัน
-  Future<Map<String, dynamic>> setDailyBudget({
-    required double amount,
-    required DateTime date,
-  }) async {
-    final token = await _getToken();
-    if (token == null) {
-      throw Exception('Authentication token not found');
-    }
-
-    final body = {
-      'target_spend': amount,
-      'date': DateFormat('yyyy-MM-dd').format(date),
-    };
-
-    final response = await http.post(
-      Uri.parse(ApiConfig.setDailyBudgetUrl),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode(body),
-    );
-
-    final result = jsonDecode(response.body);
-    if (response.statusCode >= 200 && response.statusCode < 300 && result['status'] == true) {
-      return result;
-    } else {
-      throw Exception(result['message'] ?? 'Failed to set daily budget');
-    }
-  }
-
   /// ดึงรายการหมวดหมู่ตามประเภท
   Future<List<Map<String, dynamic>>> fetchCategories(String type) async {
     final token = await _getToken();
@@ -135,5 +103,31 @@ class TransactionService {
     }
     // ถ้าล้มเหลว ให้คืนค่าว่าง หรือโยน Exception ตามต้องการ
     throw Exception('Failed to load categories');
+  }
+
+  /// อัปโหลดใบเสร็จเพื่อทำ OCR
+  Future<Map<String, dynamic>> uploadReceipt(String imagePath) async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(ApiConfig.ocrUrl), // 👈 ใช้ Endpoint ใหม่
+    );
+
+    request.headers['Authorization'] = 'Bearer $token';
+    request.files.add(await http.MultipartFile.fromPath('receipt', imagePath));
+
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    final result = jsonDecode(response.body);
+
+    if (response.statusCode == 200 && result['status'] == true) {
+      return result;
+    } else {
+      throw Exception(result['message'] ?? 'Failed to upload receipt');
+    }
   }
 }

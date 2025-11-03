@@ -4,7 +4,11 @@ import 'package:flutter/foundation.dart';
 /// เปลี่ยน URL ที่ _baseUrl ตามสภาพแวดล้อมที่ใช้งาน
 class ApiConfig {
   // 1. กำหนด Base URL หลักสำหรับ Backend (Node.js)
-  static const String _baseUrl = 'http://localhost:5000';
+  // 🔴 ใช้ 'localhost' สำหรับ iOS Simulator หรือ Android Emulator
+  // 🟢 ใช้ IP Address ของคอมพิวเตอร์สำหรับอุปกรณ์จริง (Physical Device)
+  // static const String _baseUrl = 'http://localhost:5000';
+  static const String _baseUrl = 'http://10.192.86.76:5000'; // 👈 ❗️❗️ แก้ไขตรงนี้ ❗️❗️
+
 
   // 2. สร้าง Endpoint หลักๆ
   static const String apiUrl = '$_baseUrl/api';
@@ -29,9 +33,17 @@ class ApiConfig {
 
   // --- Daily Budget Endpoint ---
   static String get setDailyBudgetUrl => '$apiUrl/daily-budget/set';
+  static String get getTodayBudgetUrl => '$apiUrl/daily-budget/today';
+  
+  // Categories
+  static const String categoriesUrl = '$apiUrl/categories';
+
+  // OCR Endpoint
+  static String get ocrUrl => '$apiUrl/transactions-ocr';
 
   // --- Wallet Endpoint ---
   static String get walletUrl => '$apiUrl/wallet';
+  // ไม่ต้องเพิ่มอะไรที่นี่ เพราะเราจะใช้ walletUrl + '/reset'
 
   // --- Goal Endpoints ---
   static String get savingGoalsUrl => '$apiUrl/saving-goals';

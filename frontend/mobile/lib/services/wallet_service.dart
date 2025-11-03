@@ -36,4 +36,28 @@ class WalletService {
       throw Exception('Failed to load wallet. Status code: ${response.statusCode}');
     }
   }
+
+  /// รีเซ็ตยอดเงินใน Wallet
+  Future<String> resetWallet() async {
+    final token = await _getToken();
+    if (token == null) {
+      throw Exception('Authentication token not found');
+    }
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.walletUrl}/reset'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    final responseData = json.decode(response.body);
+
+    if (response.statusCode == 200 && responseData['status'] == true) {
+      return responseData['message'] ?? 'Wallet reset successfully';
+    } else {
+      throw Exception(responseData['message'] ?? 'Failed to reset wallet');
+    }
+  }
 }

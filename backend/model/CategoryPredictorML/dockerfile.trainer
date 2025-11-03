@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+# ติดตั้ง cron + mysql client
+RUN apt-get update && apt-get install -y cron default-mysql-client && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+
+# คัดลอกไฟล์ที่จำเป็นสำหรับ cron job
+COPY trainer/retrain.sh /usr/src/app/retrain.sh
+COPY trainer/cronjob /etc/cron.d/retrain-cron
+
+# --- [FIX] คัดลอกโค้ดทั้งหมดของโปรเจกต์ ML เพื่อให้ import ทำงานได้ ---
+COPY . .
+
+# ติดตั้ง dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ให้ retrain.sh รันได้
+RUN chmod +x /usr/src/app/retrain.sh
+RUN chmod 0644 /etc/cron.d/retrain-cron
+RUN crontab /etc/cron.d/retrain-cron
+
+
+
+# รัน cron แบบ foreground
+CMD ["cron", "-f"]

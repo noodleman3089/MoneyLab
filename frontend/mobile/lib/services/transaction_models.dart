@@ -12,7 +12,9 @@ class DailySummary {
   });
 
   factory DailySummary.fromJson(Map<String, dynamic> json) {
-    var transactionsList = json['transactions'] as List;
+    // --- [THE FIX] ---
+    // ป้องกันกรณีที่ transactions เป็น null โดยให้ค่าเริ่มต้นเป็น List ว่าง
+    var transactionsList = (json['transactions'] as List?) ?? [];
     List<Transaction> transactions =
         transactionsList.map((i) => Transaction.fromJson(i)).toList();
 
@@ -49,9 +51,12 @@ class Transaction {
       id: json['transaction_id'],
       description: desc,
       category: json['category_name'] ?? 'ไม่ระบุ',
-      amount: (json['amount'] as num).toDouble(),
-      type: json['type'],
-      transactionDate: DateTime.parse(json['transaction_date']),
+      // --- [THE FIX] ---
+      // ป้องกันค่า null ที่อาจเกิดขึ้นจาก API
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
+      type: json['type'] ?? 'expense', // กำหนดค่าเริ่มต้นเป็น 'expense' หากไม่มี
+      // ใช้ tryParse เพื่อป้องกัน error หาก format วันที่ไม่ถูกต้อง
+      transactionDate: DateTime.tryParse(json['transaction_date'] ?? '') ?? DateTime.now(),
     );
   }
 }

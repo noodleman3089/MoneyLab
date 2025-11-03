@@ -113,7 +113,7 @@ class DailyTransactionList extends StatelessWidget {
                         ),
                       ),
                       trailing: Text(
-                        '${transaction.amount.toInt()} ฿',
+                        '${transaction.type == 'expense' ? '-' : '+'}${transaction.amount.toInt()} ฿',
                         style: GoogleFonts.beVietnamPro(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
