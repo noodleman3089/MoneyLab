@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:convert'; // 👈 [NEW] 1. Import dart:convert
+import 'package:shared_preferences/shared_preferences.dart'; // 👈 [NEW] 2. Import SharedPreferences
 
-// 👈 1. Import service ที่สร้างขึ้นมาใหม่
 import '../services/profile_service.dart';
+// ⭐️ [NEW] 3. Import หน้า Login/Service (สำหรับเด้งกลับ/Logout)
+import '../services/authe_service.dart';
+import 'authentication/login.dart';
 
 class UserProfilePage extends StatefulWidget {
   const UserProfilePage({super.key});
@@ -12,43 +16,68 @@ class UserProfilePage extends StatefulWidget {
 }
 
 class _UserProfilePageState extends State<UserProfilePage> {
-  // 👈 2. สร้าง instance ของ service
   final ProfileService _profileService = ProfileService();
+  final AutheService _authService =
+      AutheService(); // 👈 [NEW] 4. เพิ่ม AutheService
 
-  // 👈 3. [REFACTORED] เปลี่ยน userData เป็น nullable และจัดการ state
-  Map<String, dynamic> userData = {
-    'user': {'username': 'กำลังโหลด...'},
-    'profile': {'main_income_amount': '0', 'side_income_amount': '0'}
+  // 👈 5. [FIXED] แยก State ของข้อมูล 2 ส่วนออกจากกัน
+  Map<String, dynamic> profileData = {
+    'main_income_amount': '0',
+    'side_income_amount': '0',
   };
+  Map<String, dynamic> userData = {'username': 'กำลังโหลด...'}; // 👈 [NEW]
+
   bool isLoading = true;
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    // 👈 4. [IMPLEMENTED] เรียก API เพื่อดึงข้อมูลผู้ใช้
-    _fetchUserData();
+    // 👈 6. [FIXED] เรียกฟังก์ชันโหลดข้อมูลทั้ง 2 ส่วน
+    _loadAllUserData();
   }
 
-  // 👈 5. [IMPLEMENTED] ฟังก์ชันสำหรับดึงข้อมูลผู้ใช้จาก API
-  Future<void> _fetchUserData() async {
+  // 👈 7. [FIXED] สร้างฟังก์ชัน "แม่" สำหรับโหลดข้อมูล
+  Future<void> _loadAllUserData() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
+
     try {
+      // โหลด User Data จาก SharedPreferences ก่อน
+      await _loadUserDataFromPrefs();
+
+      // จากนั้น โหลด Profile Data จาก API
       final result = await _profileService.fetchUserProfile();
+
       if (result['status'] == true && mounted) {
         setState(() {
-          userData = result['data'];
+          profileData = result['data'];
         });
       } else {
         throw Exception(result['message'] ?? 'Failed to fetch profile data');
       }
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+      final errorMsg = e.toString().replaceFirst("Exception: ", "");
+
+      // ⭐️ จัดการ Error "token not found"
+      if (errorMsg.contains('Authentication token not found')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('กรุณาล็อกอินเพื่อเข้าสู่ระบบ'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+      } else {
         setState(() {
-          errorMessage = e.toString().replaceFirst("Exception: ", "");
+          errorMessage = errorMsg;
         });
       }
     } finally {
@@ -58,10 +87,31 @@ class _UserProfilePageState extends State<UserProfilePage> {
     }
   }
 
+  // 👈 8. [NEW] ฟังก์ชันสำหรับโหลด User Data จาก SharedPreferences
+  Future<void> _loadUserDataFromPrefs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userString = prefs.getString(
+      'user',
+    ); // (ที่ 'authe_service' บันทึกไว้)
+
+    if (userString != null) {
+      setState(() {
+        userData = jsonDecode(userString);
+      });
+    } else {
+      // ถ้าไม่เจอข้อมูล user (ไม่ควรเกิดขึ้นถ้า login ถูกต้อง)
+      throw Exception('User data not found in session.');
+    }
+  }
+
   double get totalMonthlyIncome {
-    // 👈 6. [REFACTORED] ปรับให้ตรงกับโครงสร้างข้อมูลจาก API
-    double main = double.tryParse(userData['profile']?['main_income_amount']?.toString() ?? '0') ?? 0;
-    double extra = double.tryParse(userData['profile']?['side_income_amount']?.toString() ?? '0') ?? 0;
+    // 👈 9. [FIXED] อ้างอิงจาก profileData
+    double main =
+        double.tryParse(profileData['main_income_amount']?.toString() ?? '0') ??
+        0;
+    double extra =
+        double.tryParse(profileData['side_income_amount']?.toString() ?? '0') ??
+        0;
     return main + extra;
   }
 
@@ -70,6 +120,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     return Scaffold(
       backgroundColor: const Color(0xFF4DB6AC),
       appBar: AppBar(
+        // ... (ส่วน AppBar เหมือนเดิม) ...
         backgroundColor: const Color(0xFF26A69A),
         elevation: 0,
         title: Text(
@@ -80,23 +131,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
           ),
         ),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false, // 👈 ลบปุ่ม Back
         actions: [
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
             onPressed: () {
-              // TODO: นำไปหน้าแก้ไขข้อมูล
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'ฟีเจอร์แก้ไขข้อมูล (เร็วๆ นี้)',
-                    style: GoogleFonts.beVietnamPro(),
-                  ),
-                ),
-              );
+              // ... (โค้ด SnackBar) ...
             },
           ),
         ],
@@ -104,19 +144,30 @@ class _UserProfilePageState extends State<UserProfilePage> {
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
           : errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('เกิดข้อผิดพลาด: $errorMessage', style: GoogleFonts.beVietnamPro(color: Colors.white, fontSize: 16), textAlign: TextAlign.center,),
-                        const SizedBox(height: 20),
-                        ElevatedButton(onPressed: _fetchUserData, child: const Text('ลองอีกครั้ง'))
-                      ],
+          ? Center(
+              // ... (ส่วนแสดง Error) ...
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'เกิดข้อผิดพลาด: $errorMessage',
+                      style: GoogleFonts.beVietnamPro(
+                        color: Colors.white,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                )
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: _loadAllUserData,
+                      child: const Text('ลองอีกครั้ง'),
+                    ),
+                  ],
+                ),
+              ),
+            )
           : SafeArea(
               child: SingleChildScrollView(
                 child: Column(
@@ -127,6 +178,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       child: Column(
                         children: [
                           Stack(
+                            // ... (ส่วน Stack ไอคอนโปรไฟล์ เหมือนเดิม) ...
                             children: [
                               Container(
                                 width: 110,
@@ -173,8 +225,8 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           ),
                           const SizedBox(height: 15),
                           Text(
-                            // 👈 7. [REFACTORED] ปรับให้ตรงกับโครงสร้างข้อมูลจาก API
-                            userData['user']?['username'] ?? 'ผู้ใช้งาน',
+                            // 👈 10. [FIXED] อ้างอิงจาก userData
+                            userData['username'] ?? 'ผู้ใช้งาน',
                             style: GoogleFonts.beVietnamPro(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
@@ -184,6 +236,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
                           ),
                           const SizedBox(height: 5),
                           Container(
+                            // ... (ส่วนป้าย 'สมาชิกทั่วไป' เหมือนเดิม) ...
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 6,
@@ -212,17 +265,20 @@ class _UserProfilePageState extends State<UserProfilePage> {
                         _buildInfoRow(
                           Icons.email_outlined,
                           'อีเมล',
-                          userData['user']?['email'] ?? 'ไม่ระบุ',
+                          // 👈 [FIXED] อ้างอิงจาก userData
+                          userData['email'] ?? 'ไม่ระบุ',
                         ),
                         _buildInfoRow(
                           Icons.phone_outlined,
                           'เบอร์โทรศัพท์',
-                          userData['user']?['phone_number'] ?? 'ไม่ระบุ',
+                          // 👈 [FIXED] อ้างอิงจาก userData
+                          userData['phone_number'] ?? 'ไม่ระบุ',
                         ),
                         _buildInfoRow(
                           Icons.calendar_today_outlined,
                           'สมัครใช้งานวันที่',
-                          _formatDate(userData['user']?['created_at']),
+                          // 👈 [FIXED] อ้างอิงจาก userData
+                          _formatDate(userData['created_at']),
                         ),
                       ],
                     ),
@@ -236,12 +292,16 @@ class _UserProfilePageState extends State<UserProfilePage> {
                       children: [
                         _buildIncomeRow(
                           'รายรับหลัก',
-                          userData['profile']?['main_income_amount']?.toString() ?? '0.00',
+                          // 👈 [FIXED] อ้างอิงจาก profileData
+                          profileData['main_income_amount']?.toString() ??
+                              '0.00',
                           Colors.green.shade700,
                         ),
                         _buildIncomeRow(
                           'รายรับเสริม',
-                          userData['profile']?['side_income_amount']?.toString() ?? '0.00',
+                          // 👈 [FIXED] อ้างอิงจาก profileData
+                          profileData['side_income_amount']?.toString() ??
+                              '0.00',
                           Colors.blue.shade700,
                         ),
                         const Divider(
@@ -270,6 +330,9 @@ class _UserProfilePageState extends State<UserProfilePage> {
             ),
     );
   }
+
+  // ... (โค้ดส่วนที่เหลือ _formatDate, _buildInfoCard, _buildInfoRow,
+  // _buildIncomeRow, _buildActionButton เหมือนเดิมทั้งหมด) ...
 
   String _formatDate(String? dateString) {
     if (dateString == null) return 'ไม่ระบุ';
@@ -360,8 +423,12 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
-  Widget _buildIncomeRow(String label, String amount, Color color,
-      {bool isBold = false}) {
+  Widget _buildIncomeRow(
+    String label,
+    String amount,
+    Color color, {
+    bool isBold = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -396,6 +463,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  // 👈 11. [FIXED] เปิดใช้งานปุ่ม Logout (และตั้งค่า)
   Widget _buildActionButtons() {
     return Container(
       width: MediaQuery.of(context).size.width * 0.9,
@@ -407,21 +475,19 @@ class _UserProfilePageState extends State<UserProfilePage> {
             label: 'ตั้งค่าบัญชี',
             color: const Color(0xFF26A69A),
             onTap: () {
-              // TODO: นำไปหน้าตั้งค่า
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('ฟีเจอร์ตั้งค่า (เร็วๆ นี้)')),
               );
             },
           ),
-          
-          const SizedBox(height: 10),
-          
+          const SizedBox(height: 10), // 👈 [NEW]
           _buildActionButton(
+            // 👈 [NEW]
             icon: Icons.logout,
             label: 'ออกจากระบบ',
             color: Colors.red.shade600,
             onTap: () {
-              _showLogoutDialog();
+              _showLogoutDialog(); // 👈 [NEW]
             },
           ),
         ],
@@ -468,10 +534,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
     );
   }
 
+  // 👈 12. [NEW] ฟังก์ชัน Logout Dialog (เหมือนใน Additional.dart)
   void _showLogoutDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         title: Text(
           'ออกจากระบบ',
@@ -483,25 +550,43 @@ class _UserProfilePageState extends State<UserProfilePage> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'ยกเลิก',
               style: GoogleFonts.beVietnamPro(color: Colors.grey),
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              // TODO: ทำการ logout และ clear token
-              Navigator.pop(context);
-              Navigator.pop(context); // กลับไปหน้าก่อนหน้า
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'ออกจากระบบสำเร็จ',
-                    style: GoogleFonts.beVietnamPro(),
+            onPressed: () async {
+              try {
+                await _authService.logout();
+
+                if (!mounted) return;
+                Navigator.pop(dialogContext); // ปิด Dialog
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                  (route) => false,
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'ออกจากระบบสำเร็จ',
+                      style: GoogleFonts.beVietnamPro(),
+                    ),
                   ),
-                ),
-              );
+                );
+              } catch (e) {
+                if (!mounted) return;
+                Navigator.pop(dialogContext); // ปิด Dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('เกิดข้อผิดพลาด: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,

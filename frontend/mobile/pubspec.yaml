@@ -35,11 +35,11 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # State Management
-  flutter_bloc: ^8.1.3
+  flutter_bloc: ^9.1.1
   equatable: ^2.0.5
 
   # Dependency Injection
-  get_it: ^7.6.4
+  get_it: ^9.0.5
 
   # Network & HTTP
   http: ^1.2.0
@@ -48,13 +48,13 @@ dependencies:
   shared_preferences: ^2.2.2
 
   # Charts
-  fl_chart: ^0.65.0
+  fl_chart: ^1.1.0
 
   # Google Fonts
   google_fonts: ^6.3.2
 
   # Internationalization
-  intl: ^0.19.0 # Added for date formatting in services
+  intl: ^0.20.2 # Added for date formatting in services
   image_picker: ^1.1.2
 
 dev_dependencies:
@@ -69,8 +69,8 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1 # 👈 1. เพิ่มแพ็กเกจที่นี่
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4 # 👈 1. เพิ่มแพ็กเกจที่นี่
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

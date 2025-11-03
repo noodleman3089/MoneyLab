@@ -1,17 +1,16 @@
 // 1. Importing Dependencies
 import 'package:flutter/material.dart';
-// import 'package:http/http.dart' as http; // <-- ไม่ต้องใช้ http ตรงนี้แล้ว
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 
-// 👈 1. [NEW] Import SharedPreferences เพื่อใช้บันทึก Token
-import 'package:shared_preferences/shared_preferences.dart';
+// 👈 1. [REMOVED] ลบ SharedPreferences import
+// import 'package:shared_preferences/shared_preferences.dart';
 
 // ไปยังหน้า MainScreen หลังล็อกอินสำเร็จ
 import '../components/Navbar.dart' as navbar;
 
-// ⭐️ 1. (แก้ไข) Import service ที่เราสร้างขึ้นมา
-import '../../services/authe_service.dart'; // <-- (ถ้าไฟล์อยู่คนละโฟลเดอร์ ให้แก้ path)
+// ⭐️ Import service (เหมือนเดิม)
+import '../../services/authe_service.dart';
 
 // 2. Creating and Exporting a Widget
 class LoginPage extends StatefulWidget {
@@ -22,13 +21,12 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // 2.1 Defining Variables, States, and Controllers
+  // ... (ส่วนตัวแปร Controllers, key, isLoading เหมือนเดิม) ...
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
-  // ⭐️ 2. (แก้ไข) สร้าง instance ของ service
   final AutheService _authService = AutheService();
 
   @override
@@ -38,7 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  // ⭐️ 3. (แก้ไข) ฟังก์ชันสำหรับจัดการการ submit form
+  // ⭐️ 3. [FIXED] แก้ไขฟังก์ชัน handleSubmit ให้สะอาดขึ้น
   Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -49,43 +47,41 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
-      // ⭐️ (แก้ไข) เรียกใช้ service แทนการยิง http โดยตรง ⭐️
+      // 1. เรียกใช้ service (service จะบันทึก token/user ให้เอง)
       final result = await _authService.login(
         _usernameController.text,
         _passwordController.text,
       );
-      // ⭐️ (สิ้นสุดการแก้ไข) ⭐️
 
       if (!mounted) return;
 
-      // แสดงข้อความจาก API (ส่วนนี้เหมือนเดิม)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message'] ?? 'Login response')),
       );
 
-      // ถ้าเข้าสู่ระบบสำเร็จ (ส่วนนี้เหมือนเดิม)
+      // 2. ตรวจสอบผลลัพธ์เพื่อ "นำทาง" (Navigate) เท่านั้น
       if (result['status'] == true) {
-        // 👈 2. [THE FIX] บันทึก Token และข้อมูลผู้ใช้ลงใน SharedPreferences
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', result['token']);
+        // ❌ [REMOVED] ลบโค้ด SharedPreferences จากตรงนี้ทั้งหมด ❌
+        // final prefs = await SharedPreferences.getInstance();
+        // await prefs.setString('token', result['token']);
+        // await prefs.setString('user', jsonEncode(user));
 
-        // --- ✨ [THE FIX] ตรวจสอบสถานะการทำแบบสอบถาม ---
+        // 3. ใช้ข้อมูล 'user' จาก result เพื่อตัดสินใจ
         final user = result['user'];
         if (user != null) {
-          await prefs.setString('user', jsonEncode(user)); // บันทึกข้อมูล user ไว้เหมือนเดิม
-
-          // ตรวจสอบว่าเคยทำแบบสอบถามหรือยัง
           final bool surveyCompleted = user['survey_completed'] ?? false;
 
           if (surveyCompleted) {
             // ถ้าเคยทำแล้ว ไปหน้าหลัก
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const navbar.MainScreen()),
+              MaterialPageRoute(
+                builder: (context) => const navbar.MainScreen(),
+              ),
             );
           } else {
             // ถ้ายังไม่เคยทำ บังคับไปหน้าแบบสอบถาม
-            Navigator.pushNamed(context, '/questionnaire'); // สมมติว่ามี Route ชื่อ /questionnaire
+            Navigator.pushNamed(context, '/questionnaire');
           }
         } else {
           // กรณีไม่มีข้อมูล user กลับมา (Fallback) ให้ไปหน้าหลัก
@@ -96,12 +92,9 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     } catch (error) {
-      // ⭐️ (แก้ไข) จัดการ Error ที่ service โยนมา
       if (!mounted) return;
-
       print('Login error: $error');
       ScaffoldMessenger.of(context).showSnackBar(
-        // แสดงข้อความ Error ที่เราโยนมาจาก service
         SnackBar(
           content: Text(error.toString().replaceFirst("Exception: ", "")),
         ),
@@ -131,8 +124,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     // ... (โค้ดส่วน UI ทั้งหมดเหมือนเดิม) ...
-    // ( ... )
-    // ... (โค้ด UI ส่วนที่เหลือ) ...
+    // ... ( ... ) ...
     return Scaffold(
       body: SafeArea(
         child: Container(
@@ -286,7 +278,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Helper method (⭐️ แก้ไข: .withValues เป็น .withOpacity)
+  // Helper method (เหมือนเดิม)
   Widget _buildInputField({
     required TextEditingController controller,
     required String hintText,
@@ -300,7 +292,6 @@ class _LoginPageState extends State<LoginPage> {
         borderRadius: BorderRadius.circular(4),
         boxShadow: [
           BoxShadow(
-            // ⭐️ (แก้ไข) Flutter ไม่มี .withValues, ต้องใช้ .withOpacity
             color: const Color(0xFF9CAAD6).withOpacity(0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
@@ -308,7 +299,6 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
       child: TextFormField(
-        // ... (ส่วนที่เหลือของ TextFormField เหมือนเดิม) ...
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,

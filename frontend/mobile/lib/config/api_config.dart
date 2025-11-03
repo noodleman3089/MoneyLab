@@ -33,9 +33,11 @@ class ApiConfig {
   // --- Daily Budget Endpoint ---
   static String get setDailyBudgetUrl => '$apiUrl/daily-budget/set';
   static String get getTodayBudgetUrl => '$apiUrl/daily-budget/today';
-  
-  // Categories
-  static const String categoriesUrl = '$apiUrl/categories';
+
+  // ⭐️ [FIXED] แก้ไข/เพิ่ม 3 บรรทัดนี้
+  static String get categoriesUrl => '$apiUrl/categories';
+  static String get transactionsUrl => '$apiUrl/transactions';
+  static String get transactionSummaryUrl => '$apiUrl/transactions/summary';
 
   // OCR Endpoint
   static String get ocrUrl => '$apiUrl/transactions-ocr';
