@@ -14,7 +14,7 @@ USE moneylab;
 
 -- ========================
 -- users
- ========================
+-- ========================
 CREATE TABLE IF NOT EXISTS users (
   user_id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
   role ENUM('user','admin') NOT NULL DEFAULT 'user',
@@ -54,13 +54,13 @@ CREATE TABLE IF NOT EXISTS category (
     -- (ฟิลด์อื่นๆ เช่น ไอคอน)
     icon_name VARCHAR(50) NULL,
     
-    UNIQUE(user_id, category_name, type), -- ป้องกันชื่อหมวดหมู่ซ้ำกันในประเภทเดียวกัน
+    UNIQUE(user_id, category_name, category_type), -- ป้องกันชื่อหมวดหมู่ซ้ำกันในประเภทเดียวกัน
     CONSTRAINT fk_cat_user FOREIGN KEY (user_id)
       REFERENCES users(user_id)
       ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE INDEX ix_cat_user_type ON category(user_id, type);
+CREATE INDEX ix_cat_user_type ON category(user_id, category_type);
 
 -- ========================
 -- wallet
@@ -579,6 +579,16 @@ INSERT INTO category (category_name, category_type) VALUES
 ('การศึกษา/พัฒนาตนเอง','expense'),
 ('ให้เงินครอบครัว',      'expense'),
 ('การเงิน',              'expense');
+
+CREATE TABLE IF NOT EXISTS token_blocklist (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    token_jti VARCHAR(255) NOT NULL UNIQUE,  -- 'jti' (JWT ID) คือ ID ของ Token
+    user_id INT NOT NULL,
+    expires_at DATETIME NOT NULL,          -- วันหมดอายุของ Token
+    blocked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX (user_id),
+    INDEX (expires_at)
+)ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ========================
 -- Final housekeeping: 권장 indices already created above
