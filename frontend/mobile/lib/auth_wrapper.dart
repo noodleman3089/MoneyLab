@@ -28,20 +28,33 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final walletService = context.read<WalletService>();
 
     // 4. ตรวจสอบ Token
-    final bool isLoggedIn = await authService.validateToken();
+    final bool hasToken = await authService.isLoggedIn();
 
     // 5. ถ้าล็อกอินผ่าน ให้โหลด Wallet ทันที
-    if (isLoggedIn) {
+    if (!hasToken) {
+      return false; // ไม่มี Token เลย = ไปหน้า Login
+    }
+
+    // 2. ถ้ามี Token, ลองโหลดข้อมูล Wallet (ซึ่งเป็นการ validate token ไปในตัว)
+    // ⭐️ เพิ่มการ Retry เข้าไป
+    int retryCount = 0;
+    while (retryCount < 3) { // พยายาม 3 ครั้ง
       try {
-        await walletService.fetchWallet(); // 👈 โหลดข้อมูล Wallet ที่นี่
+        await walletService.fetchWallet();
+        return true; // โหลดสำเร็จ! ไปหน้า MainScreen
       } catch (e) {
-        // (จัดการ Error ถ้าต้องการ เช่น logout ผู้ใช้)
-        debugPrint('Failed to load wallet data on startup: $e');
-        return false; // ถ้าโหลด Wallet ไม่ได้ ก็ถือว่าไม่พร้อม
+        debugPrint('Failed to load wallet (Attempt ${retryCount + 1}): $e');
+        
+        retryCount++;
+        if (retryCount < 3) {
+          await Future.delayed(const Duration(seconds: 2)); // รอ 2 วินาที
+        }
       }
     }
-    
-    return isLoggedIn;
+
+    // 3. ถ้าพยายาม 3 ครั้งแล้วยังล่ม
+    debugPrint('Failed to load wallet after 3 attempts.');
+    return false; // กลับไปหน้า Login
   }
 
   @override

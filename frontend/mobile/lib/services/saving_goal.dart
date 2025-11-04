@@ -19,6 +19,9 @@ class SavingGoal {
   
   // 1. เพิ่มฟิลด์ที่ Backend มี แต่ Frontend ไม่มี
   String status;
+  
+  // [ ⭐️ แก้ไขจุดที่ 1 ]
+  List<dynamic> recommendations; // สำหรับเก็บคำแนะนำการลงทุน
 
   SavingGoal({
     this.id,
@@ -35,6 +38,9 @@ class SavingGoal {
     required this.perPeriod,
     required this.perDay,
     this.status = 'active', // 2. เพิ่ม status
+    
+    // [ ⭐️ แก้ไขจุดที่ 2 ]
+    this.recommendations = const [], // กำหนดค่าเริ่มต้นเป็น List ว่าง
   });
 
   // 3. แก้ไข 'fromJson' ให้เป็น "ล่าม" จาก Backend
@@ -46,6 +52,8 @@ class SavingGoal {
     if (json['frequency'] == 'yearly') unit = 'year';
 
     // (เราจะคำนวณ duration, perDay, plan, emoji ใน Service)
+
+    final String planType = json['plan_type'] ?? 'ประจำวัน';
     
     return SavingGoal(
       id: json['goal_id'].toString(), // 👈 แปลง
@@ -60,11 +68,15 @@ class SavingGoal {
       // ฟิลด์เหล่านี้ UI ต้องใช้ แต่ Backend ไม่มี
       // เราจะใส่ค่าเริ่มต้น หรือคำนวณทีหลังใน Service
       emoji: '💰', // (จะคำนวณใน Service)
-      plan: 'ประจำวัน', // (จะคำนวณใน Service)
+      plan: planType, // (จะคำนวณใน Service)
       duration: 0, // (จะคำนวณใน Service)
       perDay: 0, // (จะคำนวณใน Service)
       investMode: 'none',
       symbols: '',
+
+      // [ ⭐️ แก้ไขจุดที่ 3 ]
+      // ดึงข้อมูล 'recommendations' จาก API (ถ้ามี)
+      recommendations: json['recommendations'] ?? [],
     );
   }
 
@@ -74,18 +86,29 @@ class SavingGoal {
     return {
       'goal_name': name,
       'target_amount': target,
+      'current_amount': saved,
       'contribution_amount': perPeriod,
-      'frequency': frequency,
-      // Backend ไม่รู้จัก emoji, plan, ฯลฯ จึงไม่ส่งไป
+      'frequency': frequency, 
+      'status': 'active',
+      
+      // ⭐️ ส่งข้อมูลแผนการลงทุนไปด้วย
+      'plan_type': plan, 
+      'invest_mode': investMode,
+      'symbols': symbols,
     };
   }
   
   Map<String, dynamic> toUpdateJson(String frequency) {
-     return {
+    return {
       'goal_name': name,
       'target_amount': target,
       'contribution_amount': perPeriod,
       'frequency': frequency,
+      'status': status,
+      
+      'plan_type': plan,
+      'invest_mode': investMode,
+      'symbols': symbols,
     };
   }
 }

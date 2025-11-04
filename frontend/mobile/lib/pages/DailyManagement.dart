@@ -252,86 +252,134 @@ class _DailyManagementPageState extends State<DailyManagementPage>
 
 
   @override
-  Widget build(BuildContext context) {
-    // 4. ⭐️ (แก้ไข) อ่าน Wallet Balance จาก Provider
-    final walletBalance = context.watch<WalletService>().wallet?.balance ?? 0;
-    
-    // 5. ⭐️ (แก้ไข) ดึงข้อมูลจาก State
-    final double dailyGoal = _dailySummary?.dailyGoal ?? 0;
-    final double currentSpending = _dailySummary?.currentSpending ?? 0;
-    final List<models.Transaction> dailyTransactions = _dailySummary?.transactions ?? [];
-    final double progress = (dailyGoal > 0) ? (currentSpending / dailyGoal) : 0;
-    // (ลบ _walletBalance ออกจากตรงนี้)
+Widget build(BuildContext context) {
+  // 4. ⭐️ อ่าน Wallet Balance จาก Provider
+  final walletBalance = context.watch<WalletService>().wallet?.balance ?? 0;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // ... (Main Content ... เหมือนเดิม) ...
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
-              ),
+  // 5. ⭐️ ดึงข้อมูลจาก State
+  final double dailyGoal = _dailySummary?.dailyGoal ?? 0;
+  final double currentSpending = _dailySummary?.currentSpending ?? 0;
+  final List<models.Transaction> dailyTransactions = _dailySummary?.transactions ?? [];
+  final double progress = (dailyGoal > 0) ? (currentSpending / dailyGoal) : 0;
+
+  return Scaffold(
+    backgroundColor: Colors.white,
+    body: Stack(
+      children: [
+        // 🌈 พื้นหลัง
+        Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF14B8A6), Color(0xFFC7DCDE)],
             ),
-            child: SafeArea(
-              child: Column(
-                children: [
-                  // ... (Custom AppBar ... เหมือนเดิม) ...
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Center(
-                      child: Text(
-                        'จัดการรายวัน',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF223248),
-                        ),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Text(
+                      'จัดการรายวัน',
+                      style: GoogleFonts.beVietnamPro(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF223248),
                       ),
                     ),
                   ),
-                  
-                  // Body Content
-                  Expanded( 
-                    child: _isLoading
-                        ? const Center(child: CircularProgressIndicator(color: Colors.white))
-                        : _errorMessage != null
-                            ? Center(
-                                // ... (Error UI ... เหมือนเดิม) ...
-                              )
-                            : SingleChildScrollView(
-                                child: Column(
-                                  children: [
-                                    const SizedBox(height: 8),
-                                    // 6. ⭐️ (แก้ไข) ส่ง walletBalance ที่อ่านจาก Provider
-                                    DailySummaryCard(
-                                      dailyGoal: dailyGoal,
-                                      currentSpending: currentSpending,
-                                      walletBalance: walletBalance, 
-                                      progress: progress,
-                                      onEditBudget: _showSetBudgetDialog,
-                                      onResetWallet: _showResetWalletDialog, 
-                                    ),
-                                    const SizedBox(height: 20),
-                                    if (dailyGoal > 0)
-                                      AllocationRecommendationCard(dailyBudget: dailyGoal),
-                                    const SizedBox(height: 20),
-                                    DailyTransactionList(transactions: dailyTransactions),
-                                    const SizedBox(height: 100), // Space for FAB
-                                  ],
-                                ), 
+                ),
+
+                Expanded(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                      : _errorMessage != null
+                          ? Center(
+                              child: Text(
+                                _errorMessage!,
+                                style: const TextStyle(color: Colors.white),
                               ),
-                  ),
-                ],
+                            )
+                          : SingleChildScrollView(
+                              child: Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  // 💰 สรุปรายวัน
+                                  DailySummaryCard(
+                                    dailyGoal: dailyGoal,
+                                    currentSpending: currentSpending,
+                                    walletBalance: walletBalance,
+                                    progress: progress,
+                                    onEditBudget: _showSetBudgetDialog,
+                                    onResetWallet: _showResetWalletDialog,
+                                  ),
+                                  const SizedBox(height: 20),
+                                  if (dailyGoal > 0)
+                                    AllocationRecommendationCard(dailyBudget: dailyGoal),
+                                  const SizedBox(height: 20),
+                                  DailyTransactionList(transactions: dailyTransactions),
+                                  const SizedBox(height: 120), // เผื่อพื้นที่ให้ FAB
+                                ],
+                              ),
+                            ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+
+    // 🚀 Floating Action Button (FAB)
+    floatingActionButton: Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        // ปุ่มย่อย — เพิ่มรายรับ
+        if (_isFabOpen)
+          ScaleTransition(
+            scale: _animation,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 140.0),
+              child: FloatingActionButton.extended(
+                heroTag: 'incomeFab',
+                backgroundColor: Colors.green,
+                onPressed: () => _navigateToAddTransaction('income'),
+                label: const Text('รายรับ'),
+                icon: const Icon(Icons.add_card),
               ),
             ),
           ),
-          
-          // ... (FAB Menu ... เหมือนเดิม) ...
-        ],
-      ),
-    );
-  }
+
+        // ปุ่มย่อย — เพิ่มรายจ่าย
+        if (_isFabOpen)
+          ScaleTransition(
+            scale: _animation,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 75.0),
+              child: FloatingActionButton.extended(
+                heroTag: 'expenseFab',
+                backgroundColor: Colors.redAccent,
+                onPressed: _showAddExpenseOptions,
+                label: const Text('รายจ่าย'),
+                icon: const Icon(Icons.money_off),
+              ),
+            ),
+          ),
+
+        // ปุ่มหลัก (เปิด/ปิด FAB)
+        FloatingActionButton(
+          heroTag: 'mainFab',
+          backgroundColor: const Color(0xFF14B8A6),
+          onPressed: _toggleFab,
+          child: AnimatedIcon(
+            icon: AnimatedIcons.menu_close,
+            progress: _animationController,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 }

@@ -125,27 +125,48 @@ class GoalService extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> _getUserFinancialData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString('user');
+    
+    if (userJson == null) {
+      throw Exception('User data not found. Please log in again.');
+    }
+
+    final Map<String, dynamic> user = jsonDecode(userJson);
+    
+    // ดึงข้อมูลรายได้จาก User Object (ต้องแน่ใจว่าชื่อคีย์ถูกต้องตามที่ Backend/AuthService บันทึก)
+    final double mainIncome = (user['main_income_amount'] as num?)?.toDouble() ?? 0.0;
+    final double sideIncome = (user['side_income_amount'] as num?)?.toDouble() ?? 0.0;
+
+    // สำหรับ 'debts' เราจะส่ง List ว่างไปก่อน และเชื่อว่า Backend 
+    // จะใช้ Token เพื่อดึงข้อมูลหนี้ปัจจุบันของผู้ใช้เอง
+    return {
+      "main_income_amount": mainIncome,
+      "side_income_amount": sideIncome,
+      "debts": [], 
+    };
+  }
+
   Future<void> _generateRecommendation(String goalId) async {
     try {
       final headers = await _getHeaders();
 
-      // 🛑 TODO: คุณต้องดึงข้อมูลนี้มาจาก Service อื่น หรือ SharedPreferences
-      // นี่เป็นข้อมูลที่ Controller (Backend) ต้องการ
-      // ผมจะใส่ค่าตัวอย่างไว้ก่อน
-      final financialData = {
+      // 🛑 [FIX] ดึงข้อมูลการเงินจริงมาใช้แทนค่า Placeholder
+      final financialData = await _getUserFinancialData();
+
+      // สร้าง Body สำหรับส่งไป API คำแนะนำ
+      final body = jsonEncode({
         "goalId": int.parse(goalId),
-        "main_income_amount": 50000, // 👈 (TODO: ใส่ค่าจริง)
-        "side_income_amount": 0,     // 👈 (TODO: ใส่ค่าจริง)
-        "debts": [
-          // { "debt_type": "หนี้บัตร", "debt_monthly_payment": 2000, "debt_interest_rate": 18 } 
-          // 👈 (TODO: ใส่ค่าจริง)
-        ]
-      };
+        "main_income_amount": financialData["main_income_amount"], // 👈 ใช้ค่าจริง
+        "side_income_amount": financialData["side_income_amount"],   // 👈 ใช้ค่าจริง
+        "debts": financialData["debts"], // 👈 ใช้ค่าจริง (List ว่าง หรือถ้ามีระบบดึงหนี้ต้องมาใส่ตรงนี้)
+      });
 
       final response = await client.post(
         Uri.parse(ApiConfig.generateRecommendationsUrl),
         headers: headers,
-        body: jsonEncode(financialData),
+        body: body,
       );
 
       if (response.statusCode != 200) {
@@ -305,6 +326,13 @@ class GoalService extends ChangeNotifier {
   int get overallProgress {
     if (totalTarget <= 0) return 0;
     return ((totalSaved / totalTarget) * 100).round();
+  }
+
+  double calculateDailyBudget() {
+  if (goals.isEmpty) return 0;
+  return goals
+      .where((g) => g.status == 'active')
+      .fold(0, (sum, g) => sum + g.perDay);
   }
 
 }

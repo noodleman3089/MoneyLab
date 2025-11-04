@@ -89,6 +89,20 @@ class AutheService {
 
       final Map<String, dynamic> result = jsonDecode(response.body);
 
+      if (result['status'] == true &&
+          result['token'] != null &&
+          result['user'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+
+        // 1. บันทึก Token
+        await prefs.setString('token', result['token']);
+
+        // 2. บันทึกข้อมูล User (ในรูปแบบ String JSON)
+        await prefs.setString('user', jsonEncode(result['user']));
+
+        debugPrint('✅ Token and User data saved successfully (from OTP)!');
+      }
+
       return result;
     } catch (e) {
       debugPrint('AutheService VerifyOtp Error: $e');

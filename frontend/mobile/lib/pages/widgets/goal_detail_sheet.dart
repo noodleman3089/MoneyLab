@@ -92,7 +92,11 @@ class GoalDetailSheet extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (goal.plan == 'ลงทุน' && goal.recommendations.isNotEmpty)
+                    _buildRecommendationSection(goal.recommendations),
+        
                   const SizedBox(height: 16),
+                  
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -269,6 +273,56 @@ class GoalDetailSheet extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+
+  // 🎯 [เพิ่มเมธอดนี้เข้าไปในคลาส GoalDetailSheet]
+  Widget _buildRecommendationSection(List<dynamic> recommendations) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Divider(height: 32),
+        Text(
+          '📈 คำแนะนำการลงทุน',
+          style: GoogleFonts.beVietnamPro(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF223248),
+          ),
+        ),
+        const SizedBox(height: 12),
+        
+        // Loop แสดงผลคำแนะนำ
+        ...recommendations.map((rec) {
+          // สมมติว่าข้อมูลที่ได้กลับมามี 'symbol' และ 'percentage'
+          final String symbol = rec['symbol'] ?? 'N/A';
+          final double percentage = (rec['percentage'] as num?)?.toDouble() ?? 0.0;
+
+          return Card(
+            elevation: 1,
+            color: Colors.teal.shade50,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: const Color(0xFF14B8A6),
+                child: Text(
+                  symbol.isNotEmpty ? symbol.substring(0, 1) : '?',
+                  style: GoogleFonts.beVietnamPro(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              title: Text(
+                symbol,
+                style: GoogleFonts.beVietnamPro(fontWeight: FontWeight.bold),
+              ),
+              trailing: Text(
+                '${(percentage * 100).toStringAsFixed(0)}%',
+                style: GoogleFonts.beVietnamPro(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF14B8A6)),
+              ),
+            ),
+          );
+        }).toList(),
+      ],
     );
   }
 }
