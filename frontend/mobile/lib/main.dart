@@ -11,7 +11,9 @@ import 'pages/authentication/login.dart';
 import 'pages/authentication/register.dart';
 import 'pages/forgetpassword.dart';
 import 'pages/restpassword.dart';
-import 'pages/Test/TestPage.dart';
+
+// import 'pages/Test/TestPage.dart';
+
 import 'package:mobile/services/wallet_service.dart';
 import 'services/authe_service.dart';
 import 'auth_wrapper.dart';
@@ -186,40 +188,40 @@ class _MyHomePageState extends State<MyHomePage> {
                     ),
                   ),
 
-                 const SizedBox(height: 24),
+                 //const SizedBox(height: 24),
 
                   // Test Button to Test Page
-                  SizedBox(
-                    width: 200,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const TestPage(),
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFB74D),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        elevation: 4,
-                      ),
-                      child: Text(
-                        textAlign: TextAlign.center, 
-                        'Test Page',
-                        style: GoogleFonts.beVietnamPro(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // SizedBox(
+                  //   width: 200,
+                  //   height: 50,
+                  //   child: ElevatedButton(
+                  //     onPressed: () {
+                  //       Navigator.push(
+                  //         context,
+                  //         MaterialPageRoute(
+                  //           builder: (context) => const TestPage(),
+                  //         ),
+                  //       );
+                  //     },
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: const Color(0xFFFFB74D),
+                  //       foregroundColor: Colors.white,
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(25),
+                  //       ),
+                  //       elevation: 4,
+                  //     ),
+                  //     child: Text(
+                  //       textAlign: TextAlign.center, 
+                  //       'Test Page',
+                  //       style: GoogleFonts.beVietnamPro(
+                  //         fontSize: 18,
+                  //         fontWeight: FontWeight.bold,
+                  //         color: Colors.white,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
 
                 ],
               ),
